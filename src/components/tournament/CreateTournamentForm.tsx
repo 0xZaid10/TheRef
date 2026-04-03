@@ -70,7 +70,7 @@ export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
   return (
     <Card>
       <CardHeader
-        title="Create Tournament"
+        heading="Create Tournament"
         subtitle="Set up a bracket for AI-judged matches"
       />
 
