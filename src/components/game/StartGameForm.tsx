@@ -86,7 +86,7 @@ export function StartGameForm({ onGameCreated }: StartGameFormProps) {
   return (
     <Card>
       <CardHeader
-        title="Start a Game"
+        heading="Start a Game"
         subtitle="Set up a new match for AI consensus judgment"
       />
 
