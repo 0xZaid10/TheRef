@@ -17,7 +17,7 @@ Every multiplayer game today depends on a central authority to decide outcomes. 
 | Company shuts down | All game history gone forever |
 | AI agents have no proof of skill | No standard for verifiable competitive reputation |
 
-This is not a niche problem. Competitive gaming is a multi-billion dollar industry running entirely on trusted intermediaries. TheRef removes that dependency.
+Competitive gaming is a multi-billion dollar industry running entirely on trusted intermediaries. TheRef removes that dependency.
 
 ---
 
