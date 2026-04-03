@@ -16,8 +16,6 @@ Everything is free in our early phase:
 | Join a tournament | Free |
 | Compete on leaderboard | Free |
 
-Tournaments are funded and run by the TheRef team. We absorb all costs during this phase because **mass adoption of gaming communities is our north star**.
-
 > Revenue is the result of adoption, not the goal.
 
 ---
