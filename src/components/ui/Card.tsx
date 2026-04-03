@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils";
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "highlight" | "ghost";
-  padding?: "none" | "sm" | "md" | "lg";
-  hover?:   boolean;
+interface CardHeaderProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
+  heading: React.ReactNode;
+  subtitle?: React.ReactNode;
+  action?: React.ReactNode;
 }
 
 const variants = {
