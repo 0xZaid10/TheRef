@@ -1,28 +1,36 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { NETWORKS } from "@/config/networks";
+import { NETWORKS, NetworkConfig, NetworkId } from "@/config/networks";
 import { resetClient } from "@/lib/genlayer";
 
 const STORAGE_KEY = "theref_network";
 
-const NetworkContext = createContext({
-  network: null,
-  networkId: null,
-  setNetwork: () => {},
+interface NetworkContextType {
+  network:      NetworkConfig | null;
+  networkId:    NetworkId | null;
+  setNetwork:   (id: NetworkId) => void;
+  clearNetwork: () => void;
+  isReady:      boolean;
+}
+
+const NetworkContext = createContext<NetworkContextType>({
+  network:      null,
+  networkId:    null,
+  setNetwork:   () => {},
   clearNetwork: () => {},
-  isReady: false,
+  isReady:      false,
 });
 
-export function NetworkProvider({ children }) {
-  const [networkId, setNetworkId] = useState(null);
-  const [isReady, setIsReady] = useState(false);
+export function NetworkProvider({ children }: { children: React.ReactNode }) {
+  const [networkId, setNetworkId] = useState<NetworkId | null>(null);
+  const [isReady,   setIsReady]   = useState(false);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && NETWORKS[stored]) {
-        setNetworkId(stored);
+      if (stored && NETWORKS[stored as NetworkId]) {
+        setNetworkId(stored as NetworkId);
       }
     } catch {
     } finally {
@@ -30,7 +38,7 @@ export function NetworkProvider({ children }) {
     }
   }, []);
 
-  const setNetwork = useCallback((id) => {
+  const setNetwork = useCallback((id: NetworkId) => {
     const prev = networkId ? NETWORKS[networkId] : null;
     if (prev) resetClient(prev);
     setNetworkId(id);
