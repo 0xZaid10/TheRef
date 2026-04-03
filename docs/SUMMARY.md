@@ -1,7 +1,6 @@
 # Summary
 
 ## Getting Started
-* [Introduction](README.md)
 * [What is TheRef?](what-is-theref.md)
 * [Architecture](architecture.md)
 * [Deployed Contracts](deployments.md)
