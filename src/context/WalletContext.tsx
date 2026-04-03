@@ -73,9 +73,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ConnectKitProvider
           theme="midnight"
-          options={{
-            disableENS: true,
-          }}
+          options={{}}
           customTheme={{
             "--ck-accent-color": "#F5C518",
             "--ck-accent-text-color": "#080810",
