@@ -64,7 +64,7 @@ function getQueryClient() {
   return qClient;
 }
 
-export function WalletProvider({ children }) {
+export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [config] = useState(() => getWagmiConfig());
   const [queryClient] = useState(() => getQueryClient());
 
