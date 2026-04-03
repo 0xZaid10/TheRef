@@ -5,6 +5,7 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConnectKitProvider, getDefaultConfig } from "connectkit";
 import { defineChain } from "viem";
+import type { Config } from "wagmi";
 
 export const bradbury = defineChain({
   id: 4221,
@@ -24,8 +25,8 @@ export const bradbury = defineChain({
   testnet: true,
 });
 
-let wagmiConfig = null;
-let qClient = null;
+let wagmiConfig: Config | null = null;
+let qClient: QueryClient | null = null;
 
 function getWagmiConfig() {
   if (!wagmiConfig) {
