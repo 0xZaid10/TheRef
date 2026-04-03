@@ -3,12 +3,12 @@ import { cn } from "@/lib/utils";
 
 //  Text Input 
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?:   string;
-  error?:   string;
-  hint?:    string;
-  prefix?:  React.ReactNode;
-  suffix?:  React.ReactNode;
+interface InputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "prefix"> {
+  label?: string;
+  error?: string;
+  hint?: string;
+  prefix?: React.ReactNode;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
