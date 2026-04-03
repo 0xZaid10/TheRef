@@ -45,7 +45,7 @@ export function Card({
 
 //  Card sub-components 
 
-interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardHeaderProps {
   title:    React.ReactNode;
   subtitle?: React.ReactNode;
   action?:  React.ReactNode;
