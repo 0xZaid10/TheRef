@@ -138,6 +138,6 @@ Permanent, production-grade deployment.
 
 To stay focused on our mission:
 
-- ❌ No random/luck-based games (dice, cards, lotteries)
+- ❌ No random/luck-based games (dice, cards, lotteries)(Randomness produces different outcomes across validators, so they can’t agree on a single result.)
 - ❌ No social features (chat, friends, follows) — keep it pure competition
 - ❌ No NFTs for cosmetics — reputation is the only asset that matters ( might consider in the future if identity needs to be persisted or tokenised )
