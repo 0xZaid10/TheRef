@@ -43,8 +43,6 @@ TheRef's first goal is **mass adoption of gaming communities** — not revenue.
 
 Billions of players already feel the pain of unfair servers, deleted records, and untransparent decisions. They don't need to understand blockchain to want what TheRef offers. They just need to play.
 
-In our early phase, **everything is free**. No entry fees. No charges to create or play. Tournaments are funded by the TheRef team. We absorb the costs because our priority is building a platform that gaming communities genuinely trust and use.
-
 > Mass adoption of gaming communities is our north star. Revenue is the result, not the goal.
 
 ---
@@ -78,4 +76,4 @@ TheRef demonstrates the full power of GenLayer's Intelligent Contracts:
 | On-chain storage | `TreeMap` stores all games, rounds, leaderboards |
 | Contract-to-contract calls | RefereeCore calls LeaderboardVault after judgment |
 
-TheRef is not a toy. It is production-grade infrastructure running five interacting contracts with a full frontend, wallet integration, and agent support.
+TheRef is fully live on Studionet and Bradbury. It is a full protocol running five interacting contracts with a full frontend, wallet integration, and agent support.
