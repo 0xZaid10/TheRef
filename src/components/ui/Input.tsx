@@ -9,6 +9,7 @@ interface InputProps
   error?: string;
   hint?: string;
   prefix?: React.ReactNode;
+  suffix?: React.ReactNode; // ✅ ADD THIS
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
