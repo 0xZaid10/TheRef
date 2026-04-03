@@ -305,7 +305,7 @@ export default function TournamentsPage() {
                 {/* Join form - open tournaments */}
                 {detail.status === "open" && (
                   <Card>
-                    <CardHeader title="Join Tournament" />
+                    <CardHeader heading="Join Tournament" />
                     <form onSubmit={handleJoin} className="flex flex-col gap-3">
                       <div className="grid grid-cols-2 gap-3">
                         <Input
