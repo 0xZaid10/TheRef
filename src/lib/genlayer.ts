@@ -101,7 +101,7 @@ export async function writeContract(
   const tx = await client.writeContract({
     address:      address as `0x${string}`,
     functionName: method,
-    args,
+    args: args as any,
     value,
   });
 
