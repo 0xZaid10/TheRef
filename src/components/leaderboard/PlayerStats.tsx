@@ -42,7 +42,7 @@ export function PlayerStatsLookup({ gameName = "" }: PlayerStatsProps) {
 
   return (
     <Card>
-      <CardHeader title="Player Lookup" subtitle="Search stats for any player" />
+      <CardHeader heading="Player Lookup" subtitle="Search stats for any player" />
 
       <form onSubmit={handleSearch} className="flex flex-col gap-3 mb-4">
         <div className="grid grid-cols-2 gap-3">
