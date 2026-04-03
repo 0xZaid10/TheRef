@@ -131,7 +131,7 @@ export async function readContract(
   return client.readContract({
     address:      address as `0x${string}`,
     functionName: method,
-    args,
+    args: args as any,
   });
 }
 
