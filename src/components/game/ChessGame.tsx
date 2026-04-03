@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useGameSocket } from "@/hooks/useGameSocket";
 import { useNetwork } from "@/context/NetworkContext";
 import { submitMove, judgeGame } from "@/lib/contracts";
 import { Button }    from "@/components/ui/Button";
@@ -246,7 +247,36 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, o
     setLegalMoves([]);
     setPendingPromo(null);
     setGameEnd(endState);
+
+    // Broadcast move to opponent via WebSocket
+    wsSendMove({ from, to, piece: piece.type, alg, fen: newFen, promotion: promo });
   }
+
+  // ── WebSocket ────────────────────────────────────────────────────────────────
+  const { sendMove: wsSendMove, sendSubmitted, sendGameOver } = useGameSocket({
+    gameId,
+    onMove: useCallback((move) => {
+      // Opponent made a move — apply it to our board
+      if (move.fen) setFen(move.fen);
+      setHistory(h => [...h, move.alg]);
+      setLastMove({ from: move.from, to: move.to });
+    }, []),
+    onSubmitted: useCallback((player) => {
+      // Opponent submitted on-chain
+      if (player === player1) setP1Submitted(true);
+      if (player === player2) setP2Submitted(true);
+    }, [player1, player2]),
+    onGameOver: useCallback(() => {
+      // Trigger game refresh
+      onSubmitted();
+    }, [onSubmitted]),
+    onPeerJoined: useCallback(() => {
+      console.log("[ws] opponent joined");
+    }, []),
+    onPeerLeft: useCallback(() => {
+      console.log("[ws] opponent left");
+    }, []),
+  });
 
   const isSpectator = claimedPlayer === "spectator";
   const myTurn = !isSpectator && (
@@ -312,6 +342,7 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, o
 
         // Judge the game — AI confirms the result on-chain
         await judgeGame(network!, gameId);
+        sendGameOver(winner ?? undefined);
         onSubmitted();
       } catch(err: any) {
         setError(String(err?.message ?? err).slice(0, 120));
@@ -337,6 +368,7 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, o
       setTxHash(result.txHash);
       if (isP1) setP1Submitted(true);
       else       setP2Submitted(true);
+      sendSubmitted(playerName);
       if ((isP1 && p2Submitted) || (!isP1 && p1Submitted)) onSubmitted();
     } catch(err: any) {
       setError(String(err?.message ?? err).slice(0, 120));

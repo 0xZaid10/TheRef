@@ -43,6 +43,11 @@ export function GameView({ gameId }: GameViewProps) {
     try {
       const state = await getGameState(network, gameId);
       setGame(state);
+      // Stop polling once game is no longer active
+      if (state?.status !== "active" && pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     } catch {
       setError("Could not load game state");
     } finally {
@@ -54,14 +59,18 @@ export function GameView({ gameId }: GameViewProps) {
     loadGame();
   }, [loadGame]);
 
-  // Poll every 5s while game is active
+  // Keep a stable ref to loadGame so the interval never restarts
+  const loadGameRef = useRef(loadGame);
+  useEffect(() => { loadGameRef.current = loadGame; }, [loadGame]);
+
+  // Poll every 5s — single interval, never restarts, checks status via ref
   useEffect(() => {
     if (!network) return;
     pollRef.current = setInterval(() => {
-      if (game?.status === "active") loadGame();
-    }, 3000);
+      loadGameRef.current();
+    }, 5000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [network, game?.status, loadGame]);
+  }, [network]); // only depends on network — stable
 
   // Restore claimed player from localStorage
   useEffect(() => {
