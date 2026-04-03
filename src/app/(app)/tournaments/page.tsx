@@ -60,7 +60,7 @@ export default function TournamentsPage() {
     setListLoading(true);
     try {
       const data = await listTournaments(network);
-      setList((data as TournamentSummary[]).reverse());
+      setList((data as unknown as TournamentSummary[]).reverse());
     } finally {
       setListLoading(false);
     }
