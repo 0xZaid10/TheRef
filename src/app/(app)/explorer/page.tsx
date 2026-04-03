@@ -23,17 +23,18 @@ export default function ExplorerPage() {
   const [copiedAll, setCopiedAll] = useState(false);
 
   if (!network) return null;
+  const net = network; // capture for use inside nested functions
 
   // Build copy-all text
   function buildSummary() {
     const lines = [
-      `TheRef - ${network!.name} Contract Addresses`,
-      `Network: ${network!.name}`,
-      `RPC: ${network!.rpc}`,
-      `Explorer: ${network!.explorer}`,
+      `TheRef - ${net.name} Contract Addresses`,
+      `Network: ${net.name}`,
+      `RPC: ${net.rpc}`,
+      `Explorer: ${net.explorer}`,
       "",
       ...CONTRACT_KEYS.map(
-        (k) => `${CONTRACT_NAMES[k].padEnd(20)}: ${network!.addresses[k]}`
+        (k) => `${CONTRACT_NAMES[k].padEnd(20)}: ${net.addresses[k]}`
       ),
     ];
     return lines.join("\n");
