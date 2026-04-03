@@ -42,7 +42,7 @@ All TheRef contracts are live on both GenLayer networks.
 
 | Feature | Bradbury | Studionet |
 |---|---|---|
-| AI Validators | Real multi-model consensus | Simulated |
+| AI Validators | Real multi-model consensus | Real multi-model consensus |
 | Wallet Required | Yes (MetaMask / ConnectKit) | No (dev key) |
 | GEN Token | Real testnet GEN | Simulated |
 | Judgment Speed | ~30-60 seconds | ~5-15 seconds |
