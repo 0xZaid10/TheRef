@@ -106,7 +106,7 @@ export async function writeContract(
   });
 
   const receipt = await client.waitForTransactionReceipt({
-    hash:    tx as `0x${string}`,
+    hash: tx as any,
     status:  TransactionStatus.ACCEPTED,
     retries: 300,
   });
