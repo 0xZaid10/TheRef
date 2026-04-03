@@ -1,10 +1,18 @@
 import { cn } from "@/lib/utils";
 
+// CardHeader Props (correct, no conflict with HTML title)
 interface CardHeaderProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   heading: React.ReactNode;
   subtitle?: React.ReactNode;
   action?: React.ReactNode;
+}
+
+// (Assuming you already have this somewhere — keeping as-is)
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: keyof typeof variants;
+  padding?: keyof typeof paddings;
+  hover?: boolean;
 }
 
 const variants = {
@@ -46,20 +54,21 @@ export function Card({
 
 //  Card sub-components 
 
-interface CardHeaderProps {
-  title:    React.ReactNode;
-  subtitle?: React.ReactNode;
-  action?:  React.ReactNode;
-}
-
 export function CardHeader({
-  title,
+  heading,
   subtitle,
   action,
   className,
+  ...props
 }: CardHeaderProps) {
   return (
-    <div className={cn("flex items-start justify-between gap-4 mb-4", className)}>
+    <div
+      className={cn(
+        "flex items-start justify-between gap-4 mb-4",
+        className
+      )}
+      {...props}
+    >
       <div>
         <h3 className="font-display font-600 text-chalk text-base leading-tight">
           {heading}
