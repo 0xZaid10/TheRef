@@ -26,7 +26,7 @@ export const bradbury = defineChain({
 });
 
 let wagmiConfig: Config | null = null;
-let qClient: QueryClient | null = null;
+let qClient: QueryClient | null = null; 
 
 function getWagmiConfig() {
   if (!wagmiConfig) {
