@@ -425,16 +425,6 @@ TheRef is not a proof of concept that could be rebuilt on another chain. It fund
 
 ---
 
-## Team
-
-Built solo during the GenLayer Bradbury Hackathon (March 20 – April 3, 2025).
-
-**0xZaid** — Full-stack Web3 developer. Smart contracts (GenLayer Python, Solidity, Move), TypeScript backends, React/Next.js frontends. Active in the hackathon and competitive builder ecosystem.
-
-- GitHub: [@0xZaid10](https://github.com/0xZaid10)
-- Telegram: [@0xZaid10](https://t.me/0xZaid10)
-- On-chain: `0x73693d8EF123EbF1d7da3Db6Ee27baDD54d03ce6`
-
 ---
 
 ## Links
@@ -445,4 +435,4 @@ Built solo during the GenLayer Bradbury Hackathon (March 20 – April 3, 2025).
 
 ---
 
-*TheRef — Built on GenLayer Bradbury Testnet · AI Gaming Track · Hackathon 2025*
+*TheRef — Built on GenLayer Bradbury Testnet and Studionet · AI Gaming Track · Hackathon 2025*
