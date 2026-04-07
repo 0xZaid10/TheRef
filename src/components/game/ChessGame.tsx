@@ -201,17 +201,19 @@ interface ChessGameProps {
   player2:       string;
   roundNum:      number;
   claimedPlayer: string;
+  initialFen?:   string;   // board position rebuilt from on-chain rounds
+  initialHistory?: string[]; // move history rebuilt from on-chain rounds
   onSubmitted:   () => void;
 }
 
-export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, onSubmitted }: ChessGameProps) {
+export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, initialFen, initialHistory, onSubmitted }: ChessGameProps) {
   const { network } = useNetwork();
 
   const INIT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-  const [fen,        setFen]        = useState(INIT_FEN);
+  const [fen,        setFen]        = useState(initialFen ?? INIT_FEN);
+  const [history,    setHistory]    = useState<string[]>(initialHistory ?? []);
   const [selected,   setSelected]   = useState<Square | null>(null);
   const [legalMoves, setLegalMoves] = useState<Square[]>([]);
-  const [history,    setHistory]    = useState<string[]>([]);
   const [lastMove,   setLastMove]   = useState<{from:Square;to:Square}|null>(null);
   const [gameEnd,    setGameEnd]    = useState<GameEndState>(null);
 
