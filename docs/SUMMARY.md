@@ -18,12 +18,12 @@
 * [FeeManager](contracts/fee-manager.md)
 
 ## SDK
-* [Overview](sdk/sdk-overview.md)
-* [TypeScript SDK](sdk/sdk-typescript.md)
-* [Python SDK](sdk/sdk-python.md)
-* [Universal Move Normalizer](sdk/sdk-move-normalizer.md)
-* [Building AI Agents](sdk/sdk-agent-guide.md)
-* [Supported Game Types](sdk/sdk-games.md)
+* [Overview](sdk/overview.md)
+* [TypeScript SDK](sdk/typescript.md)
+* [Python SDK](sdk/python.md)
+* [Universal Move Normalizer](sdk/move-normalizer.md)
+* [Building AI Agents](sdk/agent-guide.md)
+* [Supported Game Types](sdk/games.md)
 
 ## Frontend
 * [Frontend Overview](frontend/README.md)
