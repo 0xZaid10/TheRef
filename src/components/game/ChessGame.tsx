@@ -228,7 +228,13 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, o
   const activePlayer = turn === "w" ? player1 : player2;
   const inCheck = isInCheck(board, turn);
 
-  function commitMove(from: Square, to: Square, promo?: string) {
+  const isSpectator = claimedPlayer === "spectator";
+  const myTurn = !isSpectator && (
+    (turn === "w" && claimedPlayer === player1) ||
+    (turn === "b" && claimedPlayer === player2)
+  );
+
+  async function commitMove(from: Square, to: Square, promo?: string) {
     const [fr,fc] = squareToRC(from);
     const piece   = board[fr][fc]!;
     const capture = !!board[squareToRC(to)[0]][squareToRC(to)[1]];
@@ -250,6 +256,22 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, o
 
     // Broadcast move to opponent via WebSocket
     wsSendMove({ from, to, piece: piece.type, alg, fen: newFen, promotion: promo });
+
+    // Auto-submit on-chain immediately — no button needed
+    if (!network || isSpectator || !claimedPlayer) return;
+    const isP1 = claimedPlayer === player1;
+    setSubmitting(isP1 ? "p1" : "p2");
+    try {
+      const result = await submitMove(network, gameId, claimedPlayer, alg);
+      setTxHash(result.txHash);
+      if (isP1) setP1Submitted(true);
+      else       setP2Submitted(true);
+      sendSubmitted(claimedPlayer);
+    } catch (err: any) {
+      setError(String(err?.message ?? err).slice(0, 120));
+    } finally {
+      setSubmitting(null);
+    }
   }
 
   // ── WebSocket ────────────────────────────────────────────────────────────────
@@ -278,11 +300,7 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, o
     }, []),
   });
 
-  const isSpectator = claimedPlayer === "spectator";
-  const myTurn = !isSpectator && (
-    (turn === "w" && claimedPlayer === player1) ||
-    (turn === "b" && claimedPlayer === player2)
-  );
+  // isSpectator and myTurn defined below commitMove — moved up
 
   function handleSquareClick(sq: Square) {
     if (gameEnd) return;
@@ -355,27 +373,7 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, o
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameEnd]);
 
-  async function submitPlayerMove(playerName: string, isP1: boolean) {
-    if (!network) return;
-    const playerMoves = history.filter((_, i) => isP1 ? i%2===0 : i%2===1);
-    const lastMove    = playerMoves[playerMoves.length - 1];
-    if (!lastMove) return;
-
-    setSubmitting(isP1 ? "p1" : "p2");
-    setError("");
-    try {
-      const result = await submitMove(network, gameId, playerName, lastMove);
-      setTxHash(result.txHash);
-      if (isP1) setP1Submitted(true);
-      else       setP2Submitted(true);
-      sendSubmitted(playerName);
-      if ((isP1 && p2Submitted) || (!isP1 && p1Submitted)) onSubmitted();
-    } catch(err: any) {
-      setError(String(err?.message ?? err).slice(0, 120));
-    } finally {
-      setSubmitting(null);
-    }
-  }
+  // submitPlayerMove removed — auto-submit now happens in commitMove
 
   const isLight = (r: number, c: number) => (r+c)%2 === 0;
 
@@ -528,39 +526,19 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, o
         </div>
       </div>
 
-      {/* Manual submit buttons — only shown for your own player */}
+      {/* Auto-submit status */}
       {!gameEnd && !isSpectator && (
-        <div className="grid grid-cols-2 gap-3 mt-1">
-          {[
-            { name: player1, isP1: true,  submitted: p1Submitted, loading: submitting==="p1" },
-            { name: player2, isP1: false, submitted: p2Submitted, loading: submitting==="p2" },
-          ].filter(p => p.name === claimedPlayer).map(({ name, isP1, submitted, loading }) => {
-            const playerMoves = history.filter((_, i) => isP1 ? i%2===0 : i%2===1);
-            const hasMove = playerMoves.length > 0;
-            const lastAlg = playerMoves[playerMoves.length-1];
-            return (
-              <div key={name} className="flex flex-col gap-1.5">
-                <p className="text-xs text-mist font-mono">{name}</p>
-                {submitted ? (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-win/5 border border-win/20">
-                    <span className="text-win">✓</span>
-                    <span className="text-xs text-chalk">Submitted</span>
-                  </div>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant={hasMove ? "primary" : "secondary"}
-                    loading={loading}
-                    disabled={!hasMove || !!submitting}
-                    onClick={() => submitPlayerMove(name, isP1)}
-                    className="w-full"
-                  >
-                    {hasMove ? `Submit: ${lastAlg}` : "No move yet"}
-                  </Button>
-                )}
-              </div>
-            );
-          })}
+        <div className="flex items-center gap-3 mt-1">
+          {submitting ? (
+            <div className="flex items-center gap-2 text-xs text-mist">
+              <span className="w-3 h-3 rounded-full border border-ref border-t-transparent animate-spin inline-block" />
+              Submitting move on-chain...
+            </div>
+          ) : (p1Submitted && claimedPlayer === player1) || (p2Submitted && claimedPlayer === player2) ? (
+            <div className="flex items-center gap-2 text-xs text-win">
+              <span>✓</span> Move submitted — waiting for opponent
+            </div>
+          ) : null}
         </div>
       )}
 
