@@ -1,6 +1,7 @@
 # ⚖️ TheRef — Trustless AI Game Infrastructure on GenLayer
 
-> **The central server is gaming's biggest lie. Someone always controls it. TheRef kills the server and replaces it with five independent AI minds reaching permanent on-chain consensus. No operator. No corruption. No single point of failure. Just verifiable truth.**
+> **The central server has always been a single point of control — one system responsible for validating outcomes, resolving disputes, and defining what is considered ‘true’ inside a game. While this model has powered gaming for decades, it concentrates authority in one place.
+TheRef replaces that model with five independent AI validators that evaluate outcomes in parallel and reach permanent on-chain consensus. No operator. No gatekeeper. No reliance on a single machine or entity. Just verifiable truth, transparently agreed upon and recorded.**
 
 ---
 
