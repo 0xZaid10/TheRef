@@ -1,8 +1,10 @@
-# Supported Game Types
+# Every Game. Any Move.
 
-TheRef supports any game where moves can be expressed as text. The AI judge reads the game rules you provide and evaluates moves accordingly.
+TheRef doesn't have a list of supported games. If a game has moves, TheRef can judge it.
 
-Below are common game types with SDK examples.
+The AI validators read the rules you define at game creation and apply them to whatever moves come in. You describe the game — the validators understand it. The Universal Move Normalizer converts any move format into readable text. The AI does the rest.
+
+The examples below are just that — examples. This is not an exhaustive list. Any game works.
 
 ---
 
@@ -13,16 +15,16 @@ const gameId = await ref.createGame({
   name:      "Chess",
   player1:   "Zaid",
   player2:   "Gen",
-  maxRounds: 0, // open-ended
+  maxRounds: 0,
   rules:     "Standard chess. Moves in algebraic notation. Game ends by checkmate or resignation.",
 });
 
-// Multiple accepted formats:
+// All formats accepted:
 await ref.submitMove(gameId, "Zaid", "e4");
 await ref.submitMove(gameId, "Zaid", { from: "e2", to: "e4" });
 await ref.submitMove(gameId, "Zaid", { piece: "knight", from: "g1", to: "f3" });
-await ref.submitMove(gameId, "Zaid", [6, 0, 5, 2]); // coordinate array
-await ref.submitMove(gameId, "Zaid", { uci: "g1f3" }); // UCI format
+await ref.submitMove(gameId, "Zaid", [6, 0, 5, 2]);
+await ref.submitMove(gameId, "Zaid", { uci: "g1f3" });
 ```
 
 ---
@@ -40,9 +42,8 @@ const gameId = await ref.createGame({
 
 // All equivalent:
 await ref.submitMove(gameId, "Alice", "Rock");
-await ref.submitMove(gameId, "Alice", "rock");
-await ref.submitMove(gameId, "Alice", 0);                // number
-await ref.submitMove(gameId, "Alice", { choice: "Rock" }); // object
+await ref.submitMove(gameId, "Alice", 0);                  // 0 = Rock
+await ref.submitMove(gameId, "Alice", { choice: "Rock" });
 ```
 
 ---
@@ -55,13 +56,12 @@ const gameId = await ref.createGame({
   player1:   "Alice",
   player2:   "Bob",
   maxRounds: 5,
-  rules:     "Most detailed and accurate answer wins each round. Partial credit for incomplete answers.",
+  rules:     "Most detailed and accurate answer wins each round.",
 });
 
 await ref.submitMove(gameId, "Alice",
-  "The capital of Australia is Canberra, established in 1913 as a compromise between Sydney and Melbourne."
+  "The capital of Australia is Canberra, established in 1913."
 );
-
 await ref.submitMove(gameId, "Bob", { answer: "Canberra" });
 ```
 
@@ -75,23 +75,15 @@ const gameId = await ref.createGame({
   player1:   "Ash",
   player2:   "Misty",
   maxRounds: 6,
-  rules:     `Turn-based Pokemon battle. Each player selects one move per turn.
-               Judge based on type effectiveness, power, and accuracy.
-               Invalid moves lose the round.`,
+  rules:     "Turn-based Pokemon battle. Judge based on type effectiveness, power, and accuracy.",
 });
 
 await ref.submitMove(gameId, "Ash", {
-  action:  "attack",
-  move:    "Thunderbolt",
-  target:  "Starmie",
-  power:   90,
-  type:    "Electric",
-});
-
-await ref.submitMove(gameId, "Misty", {
-  action: "defend",
-  move:   "Barrier",
-  target: "self",
+  action: "attack",
+  move:   "Thunderbolt",
+  target: "Starmie",
+  power:  90,
+  type:   "Electric",
 });
 ```
 
@@ -150,7 +142,7 @@ const gameId = await ref.createGame({
   player1:   "Debater_A",
   player2:   "Debater_B",
   maxRounds: 3,
-  rules:     "Each round, players argue for their assigned position. Judge on logic, evidence, and persuasiveness.",
+  rules:     "Judge on logic, evidence, and persuasiveness.",
 });
 
 await ref.submitMove(gameId, "Debater_A", {
@@ -163,25 +155,21 @@ await ref.submitMove(gameId, "Debater_A", {
 
 ---
 
-## Custom Games
+## Don't See Your Game?
 
-Any game works. Just define the rules clearly:
+That's the point. TheRef is game-agnostic by design.
+
+If you can describe the rules in plain text and express moves in any format — TheRef judges it. No integration work. No special support required.
 
 ```typescript
 const gameId = await ref.createGame({
-  name:  "My Custom Game",
-  rules: `This is a word association game.
-           Each player submits one word per round.
-           The word must relate to the previous word.
-           The player whose word is more creative and connected wins the round.
-           Completely unrelated words lose automatically.`,
-  player1:   "Player1",
-  player2:   "Player2",
-  maxRounds: 5,
+  name:    "My Completely New Game",
+  rules:   "Describe your rules here. The AI will apply them.",
+  player1: "Player1",
+  player2: "Player2",
 });
 
-await ref.submitMove(gameId, "Player1", "Ocean");
-await ref.submitMove(gameId, "Player2", "Waves");
+await ref.submitMove(gameId, "Player1", yourMoveInAnyFormat);
 ```
 
-The AI judge reads your rules and applies them. The clearer the rules, the more consistent the judgments.
+The AI reads your rules. The validators reach consensus. The result goes on-chain.
