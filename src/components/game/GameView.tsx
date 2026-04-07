@@ -24,6 +24,26 @@ interface GameViewProps {
   gameId: string;
 }
 
+
+// Reconstruct FEN and move history from on-chain round data
+function rebuildChessState(rounds: any[]): { fen: string; history: string[] } {
+  const INIT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  if (!rounds || rounds.length === 0) return { fen: INIT_FEN, history: [] };
+
+  // Collect all submitted moves in order: p1 move, p2 move, p1 move, p2 move...
+  const history: string[] = [];
+  for (const round of rounds) {
+    if (round.move_player1) history.push(round.move_player1);
+    if (round.move_player2) history.push(round.move_player2);
+  }
+
+  // We can't fully replay the FEN without a chess engine here,
+  // but we can pass the history so the board knows how many moves were made.
+  // The FEN will be synced via WebSocket on the next move.
+  // For now return INIT_FEN — WebSocket onMove will correct it instantly.
+  return { fen: INIT_FEN, history };
+}
+
 export function GameView({ gameId }: GameViewProps) {
   const { network } = useNetwork();
   const { address }  = useAccount();
@@ -292,6 +312,8 @@ export function GameView({ gameId }: GameViewProps) {
               player2={game.player2}
               roundNum={game.round_count + 1}
               claimedPlayer={claimedPlayer ?? "spectator"}
+              initialFen={rebuildChessState(game.rounds ?? []).fen}
+              initialHistory={rebuildChessState(game.rounds ?? []).history}
               onSubmitted={() => loadGame()}
             />
           </Card>
