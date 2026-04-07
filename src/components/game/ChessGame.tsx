@@ -343,19 +343,30 @@ export function ChessGame({ gameId, player1, player2, roundNum, claimedPlayer, i
     async function autoFinish() {
       setJudging(true);
       try {
-        // Submit final moves for both players from history
         const p1Moves = history.filter((_, i) => i % 2 === 0);
         const p2Moves = history.filter((_, i) => i % 2 === 1);
         const p1Last  = p1Moves[p1Moves.length - 1];
         const p2Last  = p2Moves[p2Moves.length - 1];
 
-        if (p1Last && !p1Submitted) {
-          const r = await submitMove(network!, gameId, player1, p1Last);
+        // Determine the losing side for checkmate
+        // turn === "w" means white is to move but can't → white is mated → player1 lost
+        const matedPlayer  = gameEnd === "checkmate" ? (turn === "w" ? player1 : player2) : null;
+        const matedIsP1    = matedPlayer === player1;
+        const checkmateMsg = "Checkmated — no move possible";
+        const stalemateMsg = "Stalemate — draw agreed";
+
+        // Submit player1's move (last move or checkmate/stalemate marker)
+        const p1Move = p1Last ?? (matedIsP1 ? checkmateMsg : gameEnd === "stalemate" ? stalemateMsg : null);
+        if (p1Move && !p1Submitted) {
+          const r = await submitMove(network!, gameId, player1, p1Move);
           setTxHash(r.txHash);
           setP1Submitted(true);
         }
-        if (p2Last && !p2Submitted) {
-          const r = await submitMove(network!, gameId, player2, p2Last);
+
+        // Submit player2's move (last move or checkmate/stalemate marker)
+        const p2Move = p2Last ?? (!matedIsP1 && matedPlayer ? checkmateMsg : gameEnd === "stalemate" ? stalemateMsg : null);
+        if (p2Move && !p2Submitted) {
+          const r = await submitMove(network!, gameId, player2, p2Move);
           setTxHash(r.txHash);
           setP2Submitted(true);
         }
