@@ -10,6 +10,7 @@ export interface GameState {
   visibility:     string;
   max_rounds:     number;
   rules:          string;
+  question:       string;
   player1:        string;
   player2:        string;
   agent1:         string;
@@ -169,6 +170,12 @@ export async function judgeGame(network: NetworkConfig, gameId: string) {
 
 export async function endGame(network: NetworkConfig, gameId: string) {
   return writeContract(network, network.addresses.CORE, "end_game", [
+    gidToNum(str(gameId)),
+  ]);
+}
+
+export async function forfeitGame(network: NetworkConfig, gameId: string) {
+  return writeContract(network, network.addresses.CORE, "forfeit", [
     gidToNum(str(gameId)),
   ]);
 }
