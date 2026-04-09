@@ -76,11 +76,8 @@ export default function StartGameForm({ onGameCreated }: Props) {
             if (preset && preset.rules) setRules(preset.rules);
             else if (e.target.value !== "") setRules("");
           }}
-        >
-          {GAME_PRESETS.map(p => (
-            <option key={p.label} value={p.value}>{p.label}</option>
-          ))}
-        </Select>
+          options={GAME_PRESETS.map(p => ({ value: p.value, label: p.label }))}
+        />
       </div>
 
       {/* Custom game name */}
@@ -142,10 +139,14 @@ export default function StartGameForm({ onGameCreated }: Props) {
       {/* Visibility */}
       <div>
         <label className="block text-sm text-mist mb-1.5">Visibility</label>
-        <Select value={visibility} onChange={e => setVisibility(e.target.value)}>
-          <option value="public">Public</option>
-          <option value="private">Private</option>
-        </Select>
+        <Select
+          value={visibility}
+          onChange={e => setVisibility(e.target.value)}
+          options={[
+            { value: "public",  label: "Public" },
+            { value: "private", label: "Private" },
+          ]}
+        />
       </div>
 
       {error && (
