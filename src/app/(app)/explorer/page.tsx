@@ -176,7 +176,7 @@ export default function ExplorerPage() {
                 label={key}
                 name={CONTRACT_NAMES[key]}
                 description={CONTRACT_DESCRIPTIONS[key]}
-                address={net.addresses[key]}
+                address={net.addresses[key] ?? ""}
                 explorer={net.explorer}
                 isV1={key === "CORE_V1"}
               />
