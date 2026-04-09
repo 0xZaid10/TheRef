@@ -1,295 +1,245 @@
 "use client";
 
-import { useState }        from "react";
-import { motion }          from "framer-motion";
-import { useNetwork }      from "@/context/NetworkContext";
-import { ContractCard }    from "@/components/explorer/ContractCard";
-import { Card }            from "@/components/ui/Card";
-import { Badge }           from "@/components/ui/Badge";
-import { Button }          from "@/components/ui/Button";
+import { useState } from "react";
+import { useNetwork } from "@/context/NetworkContext";
 import {
   NETWORKS,
-  NetworkAddresses,
   CONTRACT_NAMES,
+  CONTRACT_DESCRIPTIONS,
+  NetworkAddresses,
 } from "@/config/networks";
-import { copyToClipboard } from "@/lib/utils";
 
+// Contract keys to display — v2 first, then v1, then the rest
 const CONTRACT_KEYS: (keyof NetworkAddresses)[] = [
-  "CORE", "LB", "ORG", "FEE", "TRN",
+  "CORE",
+  "CORE_V1",
+  "LB",
+  "ORG",
+  "FEE",
+  "TRN",
 ];
 
-export default function ExplorerPage() {
-  const { network } = useNetwork();
-  const [copiedAll, setCopiedAll] = useState(false);
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className="text-xs text-mist hover:text-chalk transition-colors ml-2 font-mono"
+    >
+      {copied ? "✓ copied" : "copy"}
+    </button>
+  );
+}
 
-  if (!network) return null;
-  const activeNetwork = network as NonNullable<typeof network>;
+interface ContractCardProps {
+  label:       string;
+  name:        string;
+  description: string;
+  address:     string;
+  explorer:    string;
+  isV1?:       boolean;
+}
 
-  // Build copy-all text
-  function buildSummary() {
-    const lines = [
-      `TheRef - ${activeNetwork.name} Contract Addresses`,
-      `Network: ${activeNetwork.name}`,
-      `RPC: ${activeNetwork.rpc}`,
-      `Explorer: ${activeNetwork.explorer}`,
-      "",
-      ...CONTRACT_KEYS.map(
-        (k) => `${CONTRACT_NAMES[k].padEnd(20)}: ${activeNetwork.addresses[k]}`
-      ),
-    ];
-    return lines.join("\n");
-  }
-
-  async function handleCopyAll() {
-    await copyToClipboard(buildSummary());
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 2000);
-  }
-
-  // Both networks for side-by-side comparison section
-  const studionet = NETWORKS.studionet;
-  const bradbury  = NETWORKS.bradbury;
+function ContractCard({ label, name, description, address, explorer, isV1 }: ContractCardProps) {
+  const isZero = address === "0x0000000000000000000000000000000000000000";
 
   return (
-    <div className="page">
-      <div className="container-ref">
+    <div className={`rounded-xl border p-5 ${
+      isV1
+        ? "border-line bg-turf/40 opacity-70"
+        : "border-line bg-turf"
+    }`}>
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono bg-line text-mist px-2 py-0.5 rounded">
+            {label}
+          </span>
+          {isV1 && (
+            <span className="text-xs font-mono bg-mist/10 text-mist px-2 py-0.5 rounded border border-mist/20">
+              v1 · archived
+            </span>
+          )}
+          {!isV1 && label === "CORE" && (
+            <span className="text-xs font-mono bg-ref/10 text-ref px-2 py-0.5 rounded border border-ref/20">
+              current
+            </span>
+          )}
+        </div>
+      </div>
 
-        {/*  Header  */}
-        <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
-          <div>
-            <h1 className="font-display text-3xl font-800 text-chalk">
-              Explorer
-            </h1>
-            <p className="text-mist text-sm mt-1">
-              All deployed contract addresses and methods
-            </p>
-          </div>
+      <p className="text-chalk font-medium mb-0.5">{name}</p>
+      <p className="text-sm text-mist mb-4">{description}</p>
+
+      <div className="font-mono text-sm text-chalk bg-pitch rounded px-3 py-2 flex items-center justify-between flex-wrap gap-2">
+        <span className={isZero ? "text-mist" : ""}>
+          {isZero ? "—" : address}
+        </span>
+        {!isZero && (
           <div className="flex items-center gap-3">
-            <Badge
-              variant={network.id === "studionet" ? "studionet" : "bradbury"}
-              dot
-              size="md"
+            <CopyButton text={address} />
+            <a
+              href={`${explorer}/address/${address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-ref hover:text-ref-dim transition-colors"
             >
-              {network.name}
-            </Badge>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleCopyAll}
-            >
-              {copiedAll ? "✓ Copied" : "Copy All"}
-            </Button>
+              explorer ↗
+            </a>
           </div>
-        </div>
-
-        {/*  Network info  */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y:  0 }}
-          transition={{ duration: 0.3 }}
-          className="mb-6"
-        >
-          <Card className="bg-pitch">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <InfoRow label="Network"  value={network.name} />
-              <InfoRow label="Chain ID" value={String(network.chainId)} mono />
-              <InfoRow label="Wallet"   value={network.walletEnabled ? "Required" : "Not needed"} />
-            </div>
-            <div className="border-t border-line mt-4 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-[10px] text-mist uppercase font-mono tracking-wider mb-1">
-                  RPC Endpoint
-                </p>
-                <p className="font-mono text-xs text-chalk break-all">{network.rpc}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-mist uppercase font-mono tracking-wider mb-1">
-                  Explorer
-                </p>
-                <a
-                  href={network.explorer}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-xs text-ref hover:underline break-all"
-                >
-                  {network.explorer}
-                </a>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/*  Contract cards  */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-          {CONTRACT_KEYS.map((key, i) => (
-            <motion.div
-              key={key}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y:  0 }}
-              transition={{ duration: 0.35, delay: i * 0.06 }}
-              className={key === "CORE" ? "md:col-span-2" : ""}
-            >
-              <ContractCard
-                contractKey={key}
-                address={network.addresses[key]}
-                explorerUrl={network.explorer}
-                networkName={network.name}
-              />
-            </motion.div>
-          ))}
-        </div>
-
-        {/*  Both networks side by side  */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-        >
-          <h2 className="font-display text-xl font-700 text-chalk mb-4">
-            All Networks
-          </h2>
-
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-line">
-                    <th className="text-left py-2 pr-4 text-xs text-mist font-mono uppercase tracking-wider">
-                      Contract
-                    </th>
-                    <th className="text-left py-2 pr-4 text-xs text-mist font-mono uppercase tracking-wider">
-                      <Badge variant="studionet" dot size="sm">Studionet</Badge>
-                    </th>
-                    <th className="text-left py-2 text-xs text-mist font-mono uppercase tracking-wider">
-                      <Badge variant="bradbury" dot size="sm">Bradbury</Badge>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {CONTRACT_KEYS.map((key) => (
-                    <tr
-                      key={key}
-                      className="border-b border-line/50 last:border-0 hover:bg-pitch/50
-                                 transition-colors duration-150"
-                    >
-                      <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="ref" size="sm">{key}</Badge>
-                          <span className="text-chalk text-xs font-500 hidden sm:block">
-                            {CONTRACT_NAMES[key]}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4">
-                        <AddressCell
-                          address={studionet.addresses[key]}
-                          explorerUrl={studionet.explorer}
-                        />
-                      </td>
-                      <td className="py-3">
-                        <AddressCell
-                          address={bradbury.addresses[key]}
-                          explorerUrl={bradbury.explorer}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/*  Deployer info  */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
-          className="mt-6"
-        >
-          <Card className="bg-pitch border-line">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-[10px] text-mist uppercase font-mono tracking-wider mb-1">
-                  Deployer
-                </p>
-                <p className="font-mono text-xs text-chalk break-all">
-                  0x73693d8EF123EbF1d7da3Db6Ee27baDD54d03ce6
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-mist uppercase font-mono tracking-wider mb-1">
-                  Treasury
-                </p>
-                <p className="font-mono text-xs text-chalk break-all">
-                  0xFe0Af9457074A2FD685425865F71ac925ad9c3D9
-                </p>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
+        )}
       </div>
     </div>
   );
 }
 
-//  Helpers 
-
-function InfoRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div>
-      <p className="text-[10px] text-mist uppercase font-mono tracking-wider mb-1">
-        {label}
-      </p>
-      <p className={`text-sm text-chalk ${mono ? "font-mono" : "font-500"}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function AddressCell({
-  address,
-  explorerUrl,
-}: {
-  address:     string;
-  explorerUrl: string;
-}) {
+export default function ExplorerPage() {
+  const { network } = useNetwork();
   const [copied, setCopied] = useState(false);
 
-  async function handleCopy(e: React.MouseEvent) {
-    e.preventDefault();
-    await copyToClipboard(address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  if (!network) return null;
+  const net = network; // stable reference for nested functions
+
+  const otherNetworkId  = net.id === "bradbury" ? "studionet" : "bradbury";
+  const otherNetwork    = NETWORKS[otherNetworkId];
+
+  function buildSummary() {
+    const lines = [
+      `TheRef — ${net.name} Contract Addresses`,
+      `Network:  ${net.name}`,
+      `RPC:      ${net.rpc}`,
+      `Explorer: ${net.explorer}`,
+      "",
+      `RefereeCore v2 (current): ${net.addresses.CORE}`,
+      `RefereeCore v1 (archived): ${net.addresses.CORE_V1}`,
+      ...["LB","ORG","FEE","TRN"].map(
+        k => `${CONTRACT_NAMES[k as keyof NetworkAddresses].padEnd(22)}: ${net.addresses[k as keyof NetworkAddresses]}`
+      ),
+    ];
+    return lines.join("\n");
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <a
-        href={`${explorerUrl}/address/${address}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-mono text-xs text-mist hover:text-ref transition-colors"
-        title={address}
-      >
-        {address.slice(0, 6)}...{address.slice(-4)}
-      </a>
-      <button
-        onClick={handleCopy}
-        className={`text-[10px] font-mono transition-colors
-          ${copied ? "text-win" : "text-mist hover:text-chalk"}`}
-      >
-        {copied ? "✓" : "⎘"}
-      </button>
+    <div className="page">
+      <div className="container-ref">
+
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-display font-bold text-chalk mb-2">Explorer</h1>
+          <p className="text-mist">All deployed contract addresses and methods</p>
+        </div>
+
+        {/* Network badge */}
+        <div className="flex items-center gap-3 mb-8 p-4 rounded-xl border border-line bg-turf">
+          <div>
+            <p className="font-medium text-chalk">{net.name}</p>
+            <p className="text-sm text-mist">Chain ID {net.chainId}</p>
+          </div>
+          <div className="ml-auto text-right text-sm text-mist font-mono">
+            <p>RPC: {net.rpc}</p>
+            <p>
+              <a
+                href={net.explorer}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-ref hover:text-ref-dim transition-colors"
+              >
+                {net.explorer} ↗
+              </a>
+            </p>
+          </div>
+        </div>
+
+        {/* Contract cards — current network */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-chalk">{net.name}</h2>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(buildSummary());
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              className="text-sm text-mist hover:text-chalk transition-colors"
+            >
+              {copied ? "✓ copied all" : "copy all addresses"}
+            </button>
+          </div>
+
+          <div className="grid gap-3">
+            {CONTRACT_KEYS.map(key => (
+              <ContractCard
+                key={key}
+                label={key}
+                name={CONTRACT_NAMES[key]}
+                description={CONTRACT_DESCRIPTIONS[key]}
+                address={net.addresses[key]}
+                explorer={net.explorer}
+                isV1={key === "CORE_V1"}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Other network — compact table */}
+        <div className="mb-10">
+          <h2 className="text-lg font-semibold text-chalk mb-4">
+            {otherNetwork.name} — All Addresses
+          </h2>
+          <div className="rounded-xl border border-line bg-turf overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line">
+                  <th className="text-left text-mist font-medium px-4 py-3 w-24">Contract</th>
+                  <th className="text-left text-mist font-medium px-4 py-3">Address</th>
+                  <th className="px-4 py-3 w-20"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {CONTRACT_KEYS.map(key => {
+                  const addr = otherNetwork.addresses[key];
+                  const isZero = addr === "0x0000000000000000000000000000000000000000";
+                  return (
+                    <tr key={key} className="border-b border-line/50 last:border-0">
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-xs text-mist">{key}</span>
+                        {key === "CORE_V1" && (
+                          <span className="ml-1 text-xs text-mist opacity-50">v1</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-chalk text-xs">
+                        {isZero ? <span className="text-mist">—</span> : addr}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {!isZero && (
+                          <a
+                            href={`${otherNetwork.explorer}/address/${addr}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-ref hover:text-ref-dim transition-colors"
+                          >
+                            ↗
+                          </a>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Meta */}
+        <div className="text-sm text-mist space-y-1">
+          <p>Deployer: <span className="font-mono text-chalk">0x73693d8EF123EbF1d7da3Db6Ee27baDD54d03ce6</span></p>
+          <p>Treasury: <span className="font-mono text-chalk">0xFe0Af9457074A2FD685425865F71ac925ad9c3D9</span></p>
+        </div>
+
+      </div>
     </div>
   );
 }
