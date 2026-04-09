@@ -44,7 +44,7 @@ export default function StartGameForm({ onGameCreated }: Props) {
     setLoading(true);
     setError("");
     try {
-      const gameId = await startGame(network, {
+      const result = await startGame(network, {
         gameName:   finalName,
         visibility,
         rules:      finalRules,
@@ -53,6 +53,7 @@ export default function StartGameForm({ onGameCreated }: Props) {
         agent1:     "0",
         agent2:     "0",
       });
+      const gameId = typeof result === 'string' ? result : (result as any).payload ?? result;
       onGameCreated(gameId);
     } catch (e: any) {
       setError(String(e?.message ?? e));
