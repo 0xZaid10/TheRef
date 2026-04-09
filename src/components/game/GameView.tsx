@@ -336,6 +336,7 @@ export function GameView({ gameId }: GameViewProps) {
             gameId={gameId}
             playerName={claimedPlayer ?? game.player1}
             roundNum={game.round_count + 1}
+            question={question}
             onSubmitted={() => loadGame()}
           />
         )
