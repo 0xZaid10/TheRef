@@ -103,9 +103,6 @@ export default function ExplorerPage() {
   if (!network) return null;
   const net = network; // stable reference for nested functions
 
-  const otherNetworkId  = net.id === "bradbury" ? "studionet" : "bradbury";
-  const otherNetwork    = NETWORKS[otherNetworkId];
-
   function buildSummary() {
     const lines = [
       `TheRef — ${net.name} Contract Addresses`,
@@ -184,45 +181,71 @@ export default function ExplorerPage() {
           </div>
         </div>
 
-        {/* Other network — compact table */}
+        {/* All Networks — side-by-side table */}
         <div className="mb-10">
-          <h2 className="text-lg font-semibold text-chalk mb-4">
-            {otherNetwork.name} — All Addresses
-          </h2>
+          <h2 className="text-lg font-semibold text-chalk mb-4">All Networks</h2>
           <div className="rounded-xl border border-line bg-turf overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line">
-                  <th className="text-left text-mist font-medium px-4 py-3 w-24">Contract</th>
-                  <th className="text-left text-mist font-medium px-4 py-3">Address</th>
-                  <th className="px-4 py-3 w-20"></th>
+                  <th className="text-left text-mist font-medium px-4 py-3">Contract</th>
+                  <th className="text-left text-mist font-medium px-4 py-3">Studionet</th>
+                  <th className="text-left text-mist font-medium px-4 py-3">Bradbury</th>
                 </tr>
               </thead>
               <tbody>
                 {CONTRACT_KEYS.map(key => {
-                  const addr = otherNetwork.addresses[key];
-                  const isZero = addr === "0x0000000000000000000000000000000000000000";
+                  const sAddr = NETWORKS.studionet.addresses[key];
+                  const bAddr = NETWORKS.bradbury.addresses[key];
+                  const sZero = !sAddr || sAddr === "0x0000000000000000000000000000000000000000";
+                  const bZero = !bAddr || bAddr === "0x0000000000000000000000000000000000000000";
                   return (
                     <tr key={key} className="border-b border-line/50 last:border-0">
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 w-28">
                         <span className="font-mono text-xs text-mist">{key}</span>
                         {key === "CORE_V1" && (
                           <span className="ml-1 text-xs text-mist opacity-50">v1</span>
                         )}
+                        {key === "CORE" && (
+                          <span className="ml-1 text-[10px] text-ref font-mono">current</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 font-mono text-chalk text-xs">
-                        {isZero ? <span className="text-mist">—</span> : addr}
+                      <td className="px-4 py-3">
+                        {sZero ? (
+                          <span className="text-mist">—</span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-chalk truncate max-w-[160px]">
+                              {sAddr}
+                            </span>
+                            <a
+                              href={`${NETWORKS.studionet.explorer}/address/${sAddr}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-ref hover:text-ref-dim transition-colors shrink-0"
+                            >
+                              ↗
+                            </a>
+                          </div>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {!isZero && (
-                          <a
-                            href={`${otherNetwork.explorer}/address/${addr}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-ref hover:text-ref-dim transition-colors"
-                          >
-                            ↗
-                          </a>
+                      <td className="px-4 py-3">
+                        {bZero ? (
+                          <span className="text-mist">—</span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-chalk truncate max-w-[160px]">
+                              {bAddr}
+                            </span>
+                            <a
+                              href={`${NETWORKS.bradbury.explorer}/address/${bAddr}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-ref hover:text-ref-dim transition-colors shrink-0"
+                            >
+                              ↗
+                            </a>
+                          </div>
                         )}
                       </td>
                     </tr>
