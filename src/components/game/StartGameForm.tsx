@@ -50,8 +50,8 @@ export default function StartGameForm({ onGameCreated }: Props) {
         rules:      finalRules,
         player1:    player1.trim(),
         player2:    player2.trim(),
-        agent1:     0,
-        agent2:     0,
+        agent1:     "0",
+        agent2:     "0",
       });
       onGameCreated(gameId);
     } catch (e: any) {
