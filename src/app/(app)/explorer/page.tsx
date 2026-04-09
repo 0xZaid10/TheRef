@@ -181,78 +181,97 @@ export default function ExplorerPage() {
           </div>
         </div>
 
-        {/* All Networks — side-by-side table */}
+        {/* All Networks — separate clean tables */}
         <div className="mb-10">
-          <h2 className="text-lg font-semibold text-chalk mb-4">All Networks</h2>
-          <div className="rounded-xl border border-line bg-turf overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th className="text-left text-mist font-medium px-4 py-3">Contract</th>
-                  <th className="text-left text-mist font-medium px-4 py-3">Studionet</th>
-                  <th className="text-left text-mist font-medium px-4 py-3">Bradbury</th>
-                </tr>
-              </thead>
-              <tbody>
-                {CONTRACT_KEYS.map(key => {
-                  const sAddr = NETWORKS.studionet.addresses[key];
-                  const bAddr = NETWORKS.bradbury.addresses[key];
-                  const sZero = !sAddr || sAddr === "0x0000000000000000000000000000000000000000";
-                  const bZero = !bAddr || bAddr === "0x0000000000000000000000000000000000000000";
-                  return (
-                    <tr key={key} className="border-b border-line/50 last:border-0">
-                      <td className="px-4 py-3 w-28">
-                        <span className="font-mono text-xs text-mist">{key}</span>
-                        {key === "CORE_V1" && (
-                          <span className="ml-1 text-xs text-mist opacity-50">v1</span>
-                        )}
-                        {key === "CORE" && (
-                          <span className="ml-1 text-[10px] text-ref font-mono">current</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {sZero ? (
-                          <span className="text-mist">—</span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-chalk truncate max-w-[160px]">
-                              {sAddr}
-                            </span>
-                            <a
-                              href={`${NETWORKS.studionet.explorer}/address/${sAddr}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-ref hover:text-ref-dim transition-colors shrink-0"
-                            >
-                              ↗
-                            </a>
+          <h2 className="text-lg font-semibold text-chalk mb-6">All Networks</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {([
+              { id: "studionet", label: "Studionet", chainId: 61999, dot: "bg-ref" },
+              { id: "bradbury",  label: "Bradbury Testnet", chainId: 4221, dot: "bg-blue-400" },
+            ] as const).map(({ id, label, chainId, dot }) => {
+              const nw = NETWORKS[id];
+              return (
+                <div key={id} className="rounded-2xl border border-line overflow-hidden">
+                  {/* Table header */}
+                  <div className="flex items-center justify-between px-5 py-3.5 bg-turf border-b border-line">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-2 h-2 rounded-full ${dot}`} />
+                      <span className="font-display font-600 text-chalk text-sm">{label}</span>
+                    </div>
+                    <span className="font-mono text-[11px] text-mist">Chain {chainId}</span>
+                  </div>
+
+                  {/* Rows */}
+                  <div className="divide-y divide-line/60 bg-pitch">
+                    {CONTRACT_KEYS.map(key => {
+                      const addr = nw.addresses[key];
+                      const isZero = !addr || addr === "0x0000000000000000000000000000000000000000";
+                      const isV1   = key === "CORE_V1";
+                      const isCurrent = key === "CORE";
+
+                      return (
+                        <div
+                          key={key}
+                          className={`flex items-center justify-between gap-3 px-5 py-3 ${isV1 ? "opacity-50" : ""}`}
+                        >
+                          {/* Contract label */}
+                          <div className="flex items-center gap-2 shrink-0 w-36">
+                            <span className="font-mono text-xs text-mist">{key}</span>
+                            {isCurrent && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ref/10 text-ref border border-ref/20">
+                                current
+                              </span>
+                            )}
+                            {isV1 && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-line text-mist border border-line">
+                                v1
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {bZero ? (
-                          <span className="text-mist">—</span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-chalk truncate max-w-[160px]">
-                              {bAddr}
-                            </span>
-                            <a
-                              href={`${NETWORKS.bradbury.explorer}/address/${bAddr}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-ref hover:text-ref-dim transition-colors shrink-0"
-                            >
-                              ↗
-                            </a>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+
+                          {/* Contract name */}
+                          <span className="text-xs text-mist hidden sm:block w-36 shrink-0">
+                            {CONTRACT_NAMES[key]}
+                          </span>
+
+                          {/* Address + link */}
+                          {isZero ? (
+                            <span className="font-mono text-xs text-mist ml-auto">—</span>
+                          ) : (
+                            <div className="flex items-center gap-2 ml-auto min-w-0">
+                              <span className="font-mono text-xs text-chalk truncate">
+                                {addr?.slice(0, 6)}...{addr?.slice(-4)}
+                              </span>
+                              <a
+                                href={`${nw.explorer}/address/${addr}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 text-xs text-ref hover:text-ref-dim transition-colors font-mono"
+                                title={addr}
+                              >
+                                ↗
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="px-5 py-3 bg-turf border-t border-line">
+                    <a
+                      href={nw.explorer}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-mist hover:text-ref transition-colors font-mono"
+                    >
+                      {nw.explorer} ↗
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
