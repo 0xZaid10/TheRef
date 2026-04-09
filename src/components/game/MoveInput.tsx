@@ -12,6 +12,7 @@ interface MoveInputProps {
   gameId:     string;
   playerName: string;
   roundNum:   number;
+  question?:  string;
   onSubmitted?: (result: string) => void;
 }
 
@@ -19,6 +20,7 @@ export function MoveInput({
   gameId,
   playerName,
   roundNum,
+  question,
   onSubmitted,
 }: MoveInputProps) {
   const { network } = useNetwork();
@@ -68,9 +70,16 @@ export function MoveInput({
         {playerName} - Round {roundNum}
       </p>
 
+      {question && (
+        <div className="px-3 py-2.5 rounded-xl bg-ref/5 border border-ref/20 mb-1">
+          <p className="text-[10px] text-mist font-mono uppercase tracking-wider mb-1">❓ Question</p>
+          <p className="text-sm text-chalk font-medium leading-snug">{question}</p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <Textarea
-          placeholder="Enter your move..."
+          placeholder={question ? "Type your answer..." : "Enter your move..."}
           value={move}
           onChange={(e) => setMove(e.target.value)}
           rows={3}
