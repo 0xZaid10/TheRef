@@ -9,6 +9,8 @@ import {
   judgeGame,
   endGame,
   submitMove,
+  forfeitGame,
+  declareDrawGame,
   GameState,
 } from "@/lib/contracts";
 import { Button }          from "@/components/ui/Button";
@@ -24,38 +26,30 @@ interface GameViewProps {
   gameId: string;
 }
 
-
-// Reconstruct FEN and move history from on-chain round data
 function rebuildChessState(rounds: any[]): { fen: string; history: string[] } {
   const INIT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   if (!rounds || rounds.length === 0) return { fen: INIT_FEN, history: [] };
-
-  // Collect all submitted moves in order: p1 move, p2 move, p1 move, p2 move...
   const history: string[] = [];
   for (const round of rounds) {
     if (round.move_player1) history.push(round.move_player1);
     if (round.move_player2) history.push(round.move_player2);
   }
-
-  // We can't fully replay the FEN without a chess engine here,
-  // but we can pass the history so the board knows how many moves were made.
-  // The FEN will be synced via WebSocket on the next move.
-  // For now return INIT_FEN — WebSocket onMove will correct it instantly.
   return { fen: INIT_FEN, history };
 }
 
 export function GameView({ gameId }: GameViewProps) {
   const { network } = useNetwork();
   const { address }  = useAccount();
-  const [game,       setGame]       = useState<GameState | null>(null);
-  const [loading,    setLoading]    = useState(true);
-  const [judging,    setJudging]    = useState(false);
-  const [judgeTx,    setJudgeTx]    = useState("");
-  const [judgeResult, setJudgeResult] = useState("");
-  const [error,      setError]      = useState("");
+  const [game,          setGame]          = useState<GameState | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [judging,       setJudging]       = useState(false);
+  const [judgeTx,       setJudgeTx]       = useState("");
+  const [judgeResult,   setJudgeResult]   = useState("");
+  const [error,         setError]         = useState("");
   const [claimedPlayer, setClaimedPlayer] = useState<string | null>(null);
-  const [forfeiting,  setForfeiting]  = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [forfeiting,    setForfeiting]    = useState(false);
+  const [showConfirm,   setShowConfirm]   = useState(false);
+  const [showRules,     setShowRules]     = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadGame = useCallback(async () => {
@@ -63,7 +57,6 @@ export function GameView({ gameId }: GameViewProps) {
     try {
       const state = await getGameState(network, gameId);
       setGame(state);
-      // Stop polling once game is no longer active
       if (state?.status !== "active" && pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
@@ -75,24 +68,17 @@ export function GameView({ gameId }: GameViewProps) {
     }
   }, [network, gameId]);
 
-  useEffect(() => {
-    loadGame();
-  }, [loadGame]);
+  useEffect(() => { loadGame(); }, [loadGame]);
 
-  // Keep a stable ref to loadGame so the interval never restarts
   const loadGameRef = useRef(loadGame);
   useEffect(() => { loadGameRef.current = loadGame; }, [loadGame]);
 
-  // Poll every 5s — single interval, never restarts, checks status via ref
   useEffect(() => {
     if (!network) return;
-    pollRef.current = setInterval(() => {
-      loadGameRef.current();
-    }, 5000);
+    pollRef.current = setInterval(() => { loadGameRef.current(); }, 5000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [network]); // only depends on network — stable
+  }, [network]);
 
-  // Restore claimed player from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(`theref_player_${gameId}`);
     if (stored) setClaimedPlayer(stored);
@@ -105,8 +91,7 @@ export function GameView({ gameId }: GameViewProps) {
 
   async function handleJudge() {
     if (!network) return;
-    setError("");
-    setJudging(true);
+    setError(""); setJudging(true);
     try {
       const result = await judgeGame(network, gameId);
       setJudgeTx(result.txHash);
@@ -114,15 +99,12 @@ export function GameView({ gameId }: GameViewProps) {
       await loadGame();
     } catch (err: any) {
       setError(String(err?.message ?? err).slice(0, 120));
-    } finally {
-      setJudging(false);
-    }
+    } finally { setJudging(false); }
   }
 
   async function handleEndGame() {
     if (!network) return;
-    setError("");
-    setJudging(true);
+    setError(""); setJudging(true);
     try {
       const result = await endGame(network, gameId);
       setJudgeTx(result.txHash);
@@ -130,9 +112,30 @@ export function GameView({ gameId }: GameViewProps) {
       await loadGame();
     } catch (err: any) {
       setError(String(err?.message ?? err).slice(0, 120));
-    } finally {
-      setJudging(false);
-    }
+    } finally { setJudging(false); }
+  }
+
+  async function handleForfeit() {
+    if (!network || !claimedPlayer || claimedPlayer === "spectator") return;
+    setForfeiting(true); setError("");
+    try {
+      await forfeitGame(network, gameId);
+      await loadGame();
+    } catch (err: any) {
+      setError(String(err?.message ?? err).slice(0, 120));
+    } finally { setForfeiting(false); setShowConfirm(false); }
+  }
+
+  async function handleDeclareDraw() {
+    if (!network) return;
+    setError(""); setJudging(true);
+    try {
+      const result = await declareDrawGame(network, gameId);
+      setJudgeResult(result.payload);
+      await loadGame();
+    } catch (err: any) {
+      setError(String(err?.message ?? err).slice(0, 120));
+    } finally { setJudging(false); }
   }
 
   if (loading) {
@@ -154,40 +157,25 @@ export function GameView({ gameId }: GameViewProps) {
 
   const isActive    = game.status === "active";
   const isCompleted = game.status === "completed" || game.status === "draw";
-  const isOpenEnded = game.max_rounds === 0;
+  const isOpenEnded = !game.max_rounds || game.max_rounds === 0;
   const isChess     = game.game_name?.toLowerCase() === "chess";
+  const question    = (game as any).question as string | undefined;
 
-  // Check if claimed player already submitted this round (from on-chain state)
-  const currentRound  = (game.rounds ?? []).find(r => r.round_number === game.round_count);
-  const myMoveOnChain = claimedPlayer === game.player1
+  const currentRound     = (game.rounds ?? []).find(r => r.round_number === game.round_count);
+  const myMoveOnChain    = claimedPlayer === game.player1
     ? currentRound?.move_player1
     : claimedPlayer === game.player2
     ? currentRound?.move_player2
     : null;
   const iAlreadySubmitted = !!myMoveOnChain;
 
-  // Count pending rounds (both moves submitted, not yet judged)
   const pendingJudgment = (game.rounds ?? []).filter(
     r => r.move_player1 && r.move_player2 && r.result === "pending"
   ).length;
 
-  async function handleForfeit() {
-    if (!network || !claimedPlayer || claimedPlayer === "spectator") return;
-    setForfeiting(true);
-    setError("");
-    try {
-      // Submit a resignation move on-chain
-      await submitMove(network, gameId, claimedPlayer, "I resign.");
-      // Then trigger judgment so the opponent is declared winner
-      await judgeGame(network, gameId);
-      await loadGame();
-    } catch (err: any) {
-      setError(String(err?.message ?? err).slice(0, 120));
-    } finally {
-      setForfeiting(false);
-      setShowConfirm(false);
-    }
-  }
+  // Detect golden round tie scenario
+  const isTied = judgeResult?.toLowerCase().includes("tie") ||
+                 judgeResult?.toLowerCase().includes("golden round");
 
   // Player identity picker
   if (!claimedPlayer && game) {
@@ -219,7 +207,7 @@ export function GameView({ gameId }: GameViewProps) {
   return (
     <div className="flex flex-col gap-4">
 
-      {/*  Game header  */}
+      {/* Game header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y:  0 }}
@@ -230,10 +218,7 @@ export function GameView({ gameId }: GameViewProps) {
             <div>
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <Badge
-                  variant={
-                    isCompleted ? "completed" :
-                    isActive    ? "active"    : "pending"
-                  }
+                  variant={isCompleted ? "completed" : isActive ? "active" : "pending"}
                   dot
                 >
                   {game.status}
@@ -249,46 +234,62 @@ export function GameView({ gameId }: GameViewProps) {
               </h2>
 
               <div className="flex items-center gap-3 mt-2">
-                <PlayerChip
-                  name={game.player1}
-                  isWinner={game.winner === game.player1}
-                />
+                <PlayerChip name={game.player1} isWinner={game.winner === game.player1} />
                 <span className="text-mist text-sm font-mono">vs</span>
-                <PlayerChip
-                  name={game.player2}
-                  isWinner={game.winner === game.player2}
-                />
+                <PlayerChip name={game.player2} isWinner={game.winner === game.player2} />
               </div>
             </div>
 
             {/* Round counter */}
             <div className="text-right shrink-0">
-              <div className="font-mono text-xs text-mist uppercase tracking-wider">
-                Rounds
-              </div>
+              <div className="font-mono text-xs text-mist uppercase tracking-wider">Rounds</div>
               <div className="font-display text-3xl font-800 text-chalk">
                 {game.round_count}
                 {!isOpenEnded && (
-                  <span className="text-mist text-lg font-400">
-                    /{game.max_rounds}
-                  </span>
+                  <span className="text-mist text-lg font-400">/{game.max_rounds}</span>
                 )}
               </div>
-              {isOpenEnded && (
-                <div className="text-[10px] text-mist font-mono">open-ended</div>
-              )}
+              {isOpenEnded && <div className="text-[10px] text-mist font-mono">open-ended</div>}
             </div>
           </div>
 
-          {/* Rules preview */}
+          {/* Auto-generated question/prompt */}
+          {question && (
+            <>
+              <CardDivider />
+              <div>
+                <p className="text-[10px] text-mist uppercase font-mono tracking-wider mb-1.5">
+                  ❓ Question
+                </p>
+                <p className="text-sm text-chalk font-medium leading-relaxed">
+                  {question}
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Rules — expandable */}
           {game.rules && (
             <>
               <CardDivider />
               <div>
-                <p className="text-[10px] text-mist uppercase font-mono tracking-wider mb-1">
-                  Rules
-                </p>
-                <p className="text-sm text-mist leading-relaxed line-clamp-2">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] text-mist uppercase font-mono tracking-wider">
+                    Rules
+                  </p>
+                  {game.rules.length > 120 && (
+                    <button
+                      onClick={() => setShowRules(p => !p)}
+                      className="text-[10px] text-ref hover:text-ref-dim transition-colors font-mono"
+                    >
+                      {showRules ? "show less ↑" : "show more ↓"}
+                    </button>
+                  )}
+                </div>
+                <p className={cn(
+                  "text-sm text-mist leading-relaxed whitespace-pre-wrap break-words",
+                  !showRules && game.rules.length > 120 && "line-clamp-3"
+                )}>
                   {game.rules}
                 </p>
               </div>
@@ -297,12 +298,10 @@ export function GameView({ gameId }: GameViewProps) {
         </Card>
       </motion.div>
 
-      {/*  Completed verdict  */}
-      {isCompleted && (
-        <VerdictDisplay gameState={game} />
-      )}
+      {/* Completed verdict */}
+      {isCompleted && <VerdictDisplay gameState={game} />}
 
-      {/* Active game - move inputs */}
+      {/* Active game — move inputs */}
       {isActive && (
         isChess ? (
           <Card>
@@ -325,7 +324,10 @@ export function GameView({ gameId }: GameViewProps) {
           <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-win/5 border border-win/20">
             <div className="flex items-center gap-2">
               <span className="text-win">✓</span>
-              <span className="text-sm font-500 text-chalk">Your move is on-chain: <span className="font-mono text-ref">{myMoveOnChain}</span></span>
+              <span className="text-sm font-500 text-chalk">
+                Your move is on-chain:{" "}
+                <span className="font-mono text-ref">{myMoveOnChain}</span>
+              </span>
             </div>
             <p className="text-xs text-mist pl-6">Waiting for opponent to submit their move...</p>
           </div>
@@ -339,18 +341,66 @@ export function GameView({ gameId }: GameViewProps) {
         )
       )}
 
-      {/* Forfeit button — always available to claimed player while game is active */}
+      {/* Judge / End game actions */}
+      {isActive && !isChess && (
+        <div className="flex flex-col gap-3">
+
+          {/* Pending judgment banner */}
+          {pendingJudgment > 0 && (
+            <Card className="border-ref/20 bg-ref/5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-500 text-chalk">
+                    {pendingJudgment} round{pendingJudgment > 1 ? "s" : ""} ready for judgment
+                  </p>
+                  <p className="text-xs text-mist mt-0.5">
+                    5 AI validators will independently evaluate the moves
+                  </p>
+                </div>
+                <Button onClick={handleJudge} loading={judging} size="md">
+                  Judge Game ⚖️
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* End game — show when rounds have been played */}
+          {game.round_count > 0 && (
+            <Button variant="outline" onClick={handleEndGame} loading={judging} className="w-full">
+              End Game & Finalize
+            </Button>
+          )}
+
+          {/* Tie actions — golden round or declare draw */}
+          {isTied && (
+            <Card className="border-ref/20 bg-ref/5">
+              <p className="text-sm font-500 text-chalk mb-3">
+                🤝 It's a tie — play a golden round to decide the winner, or declare a draw.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={handleDeclareDraw} loading={judging} className="flex-1">
+                  Declare Draw
+                </Button>
+                <div className="flex-1 text-xs text-mist flex items-center justify-center">
+                  or keep playing ↑
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {judging && (
+            <TxPending message="Waiting for AI consensus..." txHash={judgeTx || undefined} />
+          )}
+        </div>
+      )}
+
+      {/* Forfeit */}
       {isActive && claimedPlayer && claimedPlayer !== "spectator" && (
         <div className="flex justify-end">
           {showConfirm ? (
             <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-loss/30 bg-loss/5">
               <p className="text-sm text-chalk">Forfeit and concede the game?</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowConfirm(false)}
-                disabled={forfeiting}
-              >
+              <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)} disabled={forfeiting}>
                 Cancel
               </Button>
               <Button
@@ -373,66 +423,21 @@ export function GameView({ gameId }: GameViewProps) {
         </div>
       )}
 
-      {/* Judge / End game actions — hidden for Chess (board handles it automatically) */}
-      {isActive && !isChess && (
-        <div className="flex flex-col gap-3">
-          {pendingJudgment > 0 && (
-            <Card className="border-ref/20 bg-ref/5">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="text-sm font-500 text-chalk">
-                    {pendingJudgment} round{pendingJudgment > 1 ? "s" : ""} ready for judgment
-                  </p>
-                  <p className="text-xs text-mist mt-0.5">
-                    5 AI validators will independently evaluate the moves
-                  </p>
-                </div>
-                <Button
-                  onClick={handleJudge}
-                  loading={judging}
-                  size="md"
-                >
-                  Judge Game ⚖️
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {isOpenEnded && (
-            <Button
-              variant="outline"
-              onClick={handleEndGame}
-              loading={judging}
-              className="w-full"
-            >
-              End Game (Force Judgment)
-            </Button>
-          )}
-
-          {judging && (
-            <TxPending
-              message="Waiting for AI consensus..."
-              txHash={judgeTx || undefined}
-            />
-          )}
-        </div>
-      )}
-
-      {/*  Judge result message  */}
+      {/* Judge result message */}
       {judgeResult && !isCompleted && (
         <Card className="border-win/20 bg-win/5">
           <p className="text-sm font-500 text-chalk">{judgeResult}</p>
         </Card>
       )}
 
-      {/*  Error  */}
+      {/* Error */}
       {error && (
         <Card className="border-loss/20 bg-loss/5">
           <p className="text-sm text-loss">{error}</p>
         </Card>
       )}
 
-      {/*  Explorer link  */}
+      {/* Explorer link */}
       {network?.explorer && (
         <p className="text-center text-xs text-mist font-mono">
           <a
@@ -449,19 +454,11 @@ export function GameView({ gameId }: GameViewProps) {
   );
 }
 
-function PlayerChip({
-  name,
-  isWinner,
-}: {
-  name:     string;
-  isWinner: boolean;
-}) {
+function PlayerChip({ name, isWinner }: { name: string; isWinner: boolean }) {
   return (
     <div className={cn(
       "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm font-500",
-      isWinner
-        ? "bg-ref/10 text-ref border border-ref/25"
-        : "bg-line text-chalk"
+      isWinner ? "bg-ref/10 text-ref border border-ref/25" : "bg-line text-chalk"
     )}>
       {isWinner && <span className="text-[10px]">🏆</span>}
       {name}
