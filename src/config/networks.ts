@@ -2,7 +2,7 @@ export type NetworkId = "studionet" | "bradbury";
 
 export interface NetworkAddresses {
   CORE:    string;
-  CORE_V1: string; // original v1 contract (kept for history)
+  CORE_V1?: string; // original v1 contract (kept for history, optional)
   LB:      string;
   ORG:     string;
   FEE:     string;
