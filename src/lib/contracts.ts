@@ -1,4 +1,5 @@
-import { getClient, writeContract, readContract } from "./genlayer";
+// TheRef contracts v2 — updated for new genlayer.ts writeContract(network, ...) signature
+import { writeContract, readContract, getClient } from "./genlayer";
 import { NetworkConfig } from "@/config/networks";
 
 //  Types 
@@ -98,37 +99,29 @@ export interface Standing {
   eliminated: boolean;
 }
 
-//  Sanitizers - prevent BigInt(undefined) crashes 
-//
-// The SDK encodes every arg. undefined/NaN/null → BigInt crash.
-// Every value must be a valid string, number, or array before
-// being passed to writeContract.
+//  Sanitizers
 
-/** Safe string - never undefined/null */
 function str(v: unknown, fallback = ""): string {
   if (v === undefined || v === null) return fallback;
   return String(v);
 }
 
-/** Safe integer - never NaN/undefined/null */
 function int(v: unknown, fallback = 0): number {
   const n = typeof v === "number" ? v : parseInt(String(v ?? fallback), 10);
   return isNaN(n) ? fallback : n;
 }
 
-/** Safe integer array - each element sanitized */
 function intArr(v: unknown, fallback: number[]): number[] {
   if (!Array.isArray(v)) return fallback;
   const mapped = v.map(x => int(x, 0));
   return mapped.some(isNaN) ? fallback : mapped;
 }
 
-/** Convert base-36 game ID to integer - matches working CLI script exactly */
 function gidToNum(gid: string): number {
   return parseInt(String(gid).replace(/^0+/, "") || "0", 36) || 1;
 }
 
-//  RefereeCore - Writes 
+//  RefereeCore - Writes
 
 export async function startGame(
   network: NetworkConfig,
@@ -142,16 +135,15 @@ export async function startGame(
     agent2?:    string;
   }
 ) {
-  const client = getClient(network);
   const agent1 = str(params.agent1).trim();
   const agent2 = str(params.agent2).trim();
-  return writeContract(client, network.addresses.CORE, "start_game", [
+  return writeContract(network, network.addresses.CORE, "start_game", [
     str(params.gameName),
     str(params.visibility, "public"),
     str(params.rules),
     str(params.player1),
     str(params.player2),
-    agent1 || 0,   // integer 0 = "no agent" - matches CLI script exactly
+    agent1 || 0,
     agent2 || 0,
   ]);
 }
@@ -162,8 +154,7 @@ export async function submitMove(
   player:  string,
   move:    string
 ) {
-  const client = getClient(network);
-  return writeContract(client, network.addresses.CORE, "submit_move", [
+  return writeContract(network, network.addresses.CORE, "submit_move", [
     gidToNum(str(gameId)),
     str(player),
     str(move),
@@ -171,96 +162,113 @@ export async function submitMove(
 }
 
 export async function judgeGame(network: NetworkConfig, gameId: string) {
-  const client = getClient(network);
-  return writeContract(client, network.addresses.CORE, "judge_game", [
+  return writeContract(network, network.addresses.CORE, "judge_game", [
     gidToNum(str(gameId)),
   ]);
 }
 
 export async function endGame(network: NetworkConfig, gameId: string) {
-  const client = getClient(network);
-  return writeContract(client, network.addresses.CORE, "end_game", [
+  return writeContract(network, network.addresses.CORE, "end_game", [
     gidToNum(str(gameId)),
   ]);
 }
 
-//  RefereeCore - Reads 
+export async function declareDrawGame(network: NetworkConfig, gameId: string) {
+  return writeContract(network, network.addresses.CORE, "declare_draw", [
+    gidToNum(str(gameId)),
+  ]);
+}
+
+export async function joinGame(
+  network:  NetworkConfig,
+  gameId:   string,
+  player2:  string,
+  agent2?:  string
+) {
+  return writeContract(network, network.addresses.CORE, "join_game", [
+    str(gameId),
+    str(player2),
+    agent2 || 0,
+  ]);
+}
+
+//  RefereeCore - Reads
 
 export async function getGameState(network: NetworkConfig, gameId: string): Promise<GameState | null> {
   try {
-    const result = await readContract(getClient(network), network.addresses.CORE, "get_game_state", [str(gameId)]);
+    const result = await readContract(network, network.addresses.CORE, "get_game_state", [str(gameId)]);
     return result as GameState;
   } catch { return null; }
 }
 
 export async function getRoundResult(network: NetworkConfig, gameId: string, roundNumber: number): Promise<RoundResult | null> {
   try {
-    const result = await readContract(getClient(network), network.addresses.CORE, "get_round_result", [str(gameId), int(roundNumber)]);
+    const result = await readContract(network, network.addresses.CORE, "get_round_result", [str(gameId), int(roundNumber)]);
     return result as RoundResult;
   } catch { return null; }
 }
 
 export async function getCoreLeaderboard(network: NetworkConfig, gameName: string): Promise<LeaderboardEntry[]> {
   try {
-    const result = await readContract(getClient(network), network.addresses.CORE, "get_leaderboard", [str(gameName)]);
+    const result = await readContract(network, network.addresses.CORE, "get_leaderboard", [str(gameName)]);
     return (result as LeaderboardEntry[]) ?? [];
   } catch { return []; }
 }
 
 export async function getPlayerStats(network: NetworkConfig, gameName: string, playerName: string): Promise<PlayerStats | null> {
   try {
-    const result = await readContract(getClient(network), network.addresses.CORE, "get_player_stats", [str(gameName), str(playerName)]);
+    const result = await readContract(network, network.addresses.CORE, "get_player_stats", [str(gameName), str(playerName)]);
     return result as PlayerStats;
   } catch { return null; }
 }
 
 export async function getActiveGames(network: NetworkConfig): Promise<ActiveGame[]> {
   try {
-    const result = await readContract(getClient(network), network.addresses.CORE, "get_active_games");
+    const result = await readContract(network, network.addresses.CORE, "get_active_games");
     return (result as ActiveGame[]) ?? [];
   } catch { return []; }
 }
 
 export async function getTotalGames(network: NetworkConfig): Promise<number> {
   try {
-    const result = await readContract(getClient(network), network.addresses.CORE, "get_total_games");
+    const result = await readContract(network, network.addresses.CORE, "get_total_games");
     return int(result as number, 0);
   } catch { return 0; }
 }
 
-//  LeaderboardVault - Reads 
+//  LeaderboardVault - Reads
 
 export async function getVaultLeaderboard(network: NetworkConfig, gameName: string, playerType: "human" | "agent" | "all" = "all"): Promise<LeaderboardEntry[]> {
   try {
-    const result = await readContract(getClient(network), network.addresses.LB, "get_leaderboard", [str(gameName), str(playerType, "all")]);
+    const result = await readContract(network, network.addresses.LB, "get_leaderboard", [str(gameName), str(playerType, "all")]);
     return (result as LeaderboardEntry[]) ?? [];
   } catch { return []; }
 }
 
 export async function getTopPlayers(network: NetworkConfig, gameName: string, n: number = 10): Promise<LeaderboardEntry[]> {
   try {
-    const result = await readContract(getClient(network), network.addresses.LB, "get_top_players", [str(gameName), int(n, 10)]);
+    const result = await readContract(network, network.addresses.LB, "get_top_players", [str(gameName), int(n, 10)]);
     return (result as LeaderboardEntry[]) ?? [];
   } catch { return []; }
 }
 
-//  OrganizerRegistry - Reads 
+//  OrganizerRegistry - Reads
 
 export async function isOrganizerActive(network: NetworkConfig, address: string): Promise<boolean> {
   try {
-    const result = await readContract(getClient(network), network.addresses.ORG, "is_active", [str(address)]);
+    const result = await readContract(network, network.addresses.ORG, "is_active", [str(address)]);
     return Boolean(result);
   } catch { return false; }
 }
 
 export async function getOrganizerCount(network: NetworkConfig): Promise<number> {
   try {
-    const result = await readContract(getClient(network), network.addresses.ORG, "get_count");
+    const result = await readContract(network, network.addresses.ORG, "get_count");
     return int(result as number, 0);
   } catch { return 0; }
 }
 
-//  TournamentEngine - Writes 
+//  TournamentEngine - Writes
 
 export async function createTournament(
   network: NetworkConfig,
@@ -275,8 +283,7 @@ export async function createTournament(
     roundsPerMatch: number;
   }
 ) {
-  const client = getClient(network);
-  return writeContract(client, network.addresses.TRN, "create_tournament", [
+  return writeContract(network, network.addresses.TRN, "create_tournament", [
     str(params.name),
     str(params.gameName),
     str(params.format, "single_elimination"),
@@ -289,57 +296,54 @@ export async function createTournament(
 }
 
 export async function joinTournament(network: NetworkConfig, tid: string, playerName: string, playerType: string) {
-  const client = getClient(network);
-  return writeContract(client, network.addresses.TRN, "join_tournament", [
+  return writeContract(network, network.addresses.TRN, "join_tournament", [
     str(tid), str(playerName), str(playerType, "human"),
   ]);
 }
 
 export async function startTournament(network: NetworkConfig, tid: string) {
-  const client = getClient(network);
-  return writeContract(client, network.addresses.TRN, "start_tournament", [str(tid)]);
+  return writeContract(network, network.addresses.TRN, "start_tournament", [str(tid)]);
 }
 
 export async function recordMatchResult(network: NetworkConfig, tid: string, matchId: number, winner: string) {
-  const client = getClient(network);
-  return writeContract(client, network.addresses.TRN, "record_match_result", [
+  return writeContract(network, network.addresses.TRN, "record_match_result", [
     str(tid), int(matchId, 0), str(winner),
   ]);
 }
 
-//  TournamentEngine - Reads 
+//  TournamentEngine - Reads
 
 export async function getTournament(network: NetworkConfig, tid: string): Promise<Tournament | null> {
   try {
-    const result = await readContract(getClient(network), network.addresses.TRN, "get_tournament", [str(tid)]);
+    const result = await readContract(network, network.addresses.TRN, "get_tournament", [str(tid)]);
     return result as Tournament;
   } catch { return null; }
 }
 
 export async function getBracket(network: NetworkConfig, tid: string): Promise<BracketMatch[]> {
   try {
-    const result = await readContract(getClient(network), network.addresses.TRN, "get_bracket", [str(tid)]);
+    const result = await readContract(network, network.addresses.TRN, "get_bracket", [str(tid)]);
     return (result as BracketMatch[]) ?? [];
   } catch { return []; }
 }
 
 export async function getStandings(network: NetworkConfig, tid: string): Promise<Standing[]> {
   try {
-    const result = await readContract(getClient(network), network.addresses.TRN, "get_standings", [str(tid)]);
+    const result = await readContract(network, network.addresses.TRN, "get_standings", [str(tid)]);
     return (result as Standing[]) ?? [];
   } catch { return []; }
 }
 
 export async function listTournaments(network: NetworkConfig): Promise<Partial<Tournament>[]> {
   try {
-    const result = await readContract(getClient(network), network.addresses.TRN, "list_tournaments");
+    const result = await readContract(network, network.addresses.TRN, "list_tournaments");
     return (result as Partial<Tournament>[]) ?? [];
   } catch { return []; }
 }
 
 export async function getTournamentCount(network: NetworkConfig): Promise<number> {
   try {
-    const result = await readContract(getClient(network), network.addresses.TRN, "get_total");
+    const result = await readContract(network, network.addresses.TRN, "get_total");
     return int(result as number, 0);
   } catch { return 0; }
 }
