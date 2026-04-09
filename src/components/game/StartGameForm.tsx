@@ -164,3 +164,5 @@ export default function StartGameForm({ onGameCreated }: Props) {
     </div>
   );
 }
+
+export { StartGameForm };
