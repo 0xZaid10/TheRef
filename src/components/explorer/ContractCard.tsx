@@ -20,6 +20,10 @@ interface ContractCardProps {
 
 const CONTRACT_METHODS: Record<keyof NetworkAddresses, { writes: string[]; reads: string[] }> = {
   CORE: {
+    writes: ["start_game", "submit_move", "judge_game", "end_game", "declare_draw", "join_game", "set_leaderboard_vault"],
+    reads:  ["get_game_state", "get_round_result", "get_leaderboard", "get_player_stats", "get_active_games", "get_total_games"],
+  },
+  CORE_V1: {
     writes: ["start_game", "submit_move", "judge_game", "end_game", "set_leaderboard_vault"],
     reads:  ["get_game_state", "get_round_result", "get_leaderboard", "get_player_stats", "get_active_games", "get_total_games"],
   },
