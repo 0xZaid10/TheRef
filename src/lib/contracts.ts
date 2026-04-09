@@ -136,16 +136,19 @@ export async function startGame(
     agent2?:    string;
   }
 ) {
-  const agent1 = str(params.agent1).trim();
-  const agent2 = str(params.agent2).trim();
+  // agent must be integer 0 (not string "0") for the contract's `agent1==0` check
+  const agent1 = params.agent1 && params.agent1.trim() && params.agent1.trim() !== "0"
+    ? params.agent1.trim().toLowerCase() : 0;
+  const agent2 = params.agent2 && params.agent2.trim() && params.agent2.trim() !== "0"
+    ? params.agent2.trim().toLowerCase() : 0;
   return writeContract(network, network.addresses.CORE, "start_game", [
     str(params.gameName),
     str(params.visibility, "public"),
     str(params.rules),
     str(params.player1),
     str(params.player2),
-    agent1 || 0,
-    agent2 || 0,
+    agent1,
+    agent2,
   ]);
 }
 
@@ -195,7 +198,7 @@ export async function joinGame(
   return writeContract(network, network.addresses.CORE, "join_game", [
     str(gameId),
     str(player2),
-    agent2 || 0,
+    agent2 && agent2 !== "0" ? agent2.toLowerCase() : 0,
   ]);
 }
 
