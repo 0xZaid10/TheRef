@@ -34,7 +34,7 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     walletEnabled: false,
     speed:       "Fast",
     addresses: {
-      CORE:    process.env.NEXT_PUBLIC_STUDIONET_CORE    ?? "0x7AC0872D81C502dEbC18F6799Bb465E9E452AA78",
+      CORE:    process.env.NEXT_PUBLIC_STUDIONET_CORE    ?? "0xEC221bD04E9ACcb59642Ed7659aFFFc3e84B7019",
       CORE_V1: process.env.NEXT_PUBLIC_STUDIONET_CORE_V1 ?? "0x88CAA18419714aA38CdF53c0E603141c48fa3238",
       LB:      process.env.NEXT_PUBLIC_STUDIONET_LB      ?? "0x8A2d05Df048A64cc6B83682a431ade05030e4BBB",
       ORG:     process.env.NEXT_PUBLIC_STUDIONET_ORG     ?? "0x265ef96A5230F13836c553D7DD2B9D7c3fE14aE1",
@@ -53,7 +53,7 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     walletEnabled: true,
     speed:       "Public Testnet",
     addresses: {
-      CORE:    process.env.NEXT_PUBLIC_BRADBURY_CORE    ?? "0x96D9Bb0E5f47016d49c11C439263B84379c19623",
+      CORE:    process.env.NEXT_PUBLIC_BRADBURY_CORE    ?? "0x2101FE3111A4d7467D6eF1C4F8181E7bDE6a2B7f",
       CORE_V1: process.env.NEXT_PUBLIC_BRADBURY_CORE_V1 ?? "0xA29CfFC83d32fe924cFf1F1bDCf21555CCC96206",
       LB:      process.env.NEXT_PUBLIC_BRADBURY_LB      ?? "0x5D417F296b17656c9b950236feE66F63E22d8A54",
       ORG:     process.env.NEXT_PUBLIC_BRADBURY_ORG     ?? "0x440b28afc1804fc1E4AA8f5b559C18F7bCf43B3A",
