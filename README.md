@@ -1,6 +1,6 @@
 # ⚖️ TheRef — Trustless AI Game Infrastructure on GenLayer
 
-> **The central server has always been a single point of control — one system responsible for validating outcomes, resolving disputes, and defining what is considered ‘true’ inside a game. While this model has powered gaming for decades, it concentrates authority in one place.
+> **The central server has always been a single point of control — one system responsible for validating outcomes, resolving disputes, and defining what is considered 'true' inside a game. While this model has powered gaming for decades, it concentrates authority in one place.
 TheRef replaces that model with five independent AI validators that evaluate outcomes in parallel and reach permanent on-chain consensus. No operator. No gatekeeper. No reliance on a single machine or entity. Just verifiable truth, transparently agreed upon and recorded.**
 
 ---
@@ -92,28 +92,39 @@ TheRef is composed of five Intelligent Contracts and a Next.js frontend. The con
 
 ## Smart Contracts
 
-### RefereeCore
+### RefereeCore (v2)
 The heart of TheRef. Manages all game state and triggers AI judgment.
 
 **Key methods:**
 ```python
-start_game(game_name, visibility, max_rounds, rules, player1, player2, agent1, agent2)
+start_game(game_name, visibility, rules, player1, player2, agent1, agent2)
 submit_move(game_id, player, move)
-judge_game(game_id)        # triggers AI consensus judgment
-end_game(game_id)          # for open-ended games
-get_game_state(game_id)    # full game state including all rounds
-get_leaderboard(game_name) # per-game rankings
-get_active_games()         # all live games
+judge_game(game_id)         # triggers AI consensus judgment — game stays active
+end_game(game_id)           # judges all pending rounds and finalizes
+forfeit(game_id)            # instant win for opponent, no judgment
+declare_draw(game_id)       # both players agree to draw, 1pt each
+join_game(game_id, player2, agent2)  # join a waiting game as player2
+get_game_state(game_id)     # full game state including all rounds and question
+get_leaderboard(game_name)  # per-game rankings
+get_active_games()          # all live games
 ```
+
+**v2 changes from v1:**
+- `max_rounds` removed — games are open-ended by default, ended via `end_game()`
+- `forfeit()` and `declare_draw()` added
+- `join_game()` added — create a game without player2, share link, anyone joins
+- Auto-generated questions — Trivia, Debate, Riddle, and custom games get an AI-generated question/prompt stored on-chain at `start_game` time
+- AI referee tuned to judge substance over formatting
+- `player_wallets` tracking — any player who has submitted a move can forfeit from their wallet
 
 **Agent support:** `agent1` and `agent2` are optional wallet addresses. If set, only that wallet can submit moves for that player — enforcing that an agent controls its own inputs.
 
 **Judgment flow:**
-- Pending rounds (both moves submitted) are batched (max 5 per call)
-- AI builds a structured prompt with game name, rules, player names, and moves
+- Pending rounds (both moves submitted) are batched (up to 5 per call for Trivia, up to 10 for sequential games like Chess)
+- AI builds a structured prompt with game name, rules, question, player names, and moves
 - `run_nondet_unsafe` runs the LLM judgment with a custom validator
-- Result is stored: winner per round, reasoning, confidence score, reason type
-- Scores accumulate: win = 3.0 pts, draw = 1.0 pt, loss = 0
+- Result stored: winner per round, reasoning, confidence score, reason type
+- Scores assigned only at `end_game` or `declare_draw`: win = 3.0 pts, draw = 1.0 pt per game (not per round)
 
 ### LeaderboardVault
 Persistent cross-game rankings, separated by player type.
@@ -141,13 +152,11 @@ list_tournaments()
 
 Formats: `single_elimination`, `round_robin`, `swiss`
 
-Prize distribution is on-chain via configurable `prize_split` (e.g. `[70, 30]` = 70% to winner, 30% to runner-up).
-
 ### OrganizerRegistry
-Verified organizer profiles with reputation tracking. Organizers must be registered before creating tournaments — ensuring accountability.
+Verified organizer profiles with reputation tracking. Organizers must be registered before creating tournaments.
 
 ### FeeManager
-Treasury contract for platform transaction fees. Collects a small fee on each on-chain game interaction. Tournament prize pools are funded by the TheRef team, not players.
+Treasury contract for platform transaction fees. Currently set to zero for hackathon adoption.
 
 ---
 
@@ -160,17 +169,24 @@ TheRef uses GenLayer's **Equivalence Principle** and **Optimistic Democracy** to
 When `judge_game` is called, RefereeCore builds a structured prompt:
 
 ```
-You are a game referee. Game: Chess. Rules: Standard chess...
-Players: Zaid vs Claude.
-R1: Zaid=e4 | Claude=e5
-R2: Zaid=Nf3 | Claude=Nc6
-For each round output a JSON object with keys:
+You are a fair, impartial AI referee judging a game called "Trivia".
+GAME RULES: Most detailed correct answer wins each round.
+QUESTION: What is the capital of Australia?
+
+ROUNDS TO JUDGE:
+  Round 1:
+    Alice: Canberra — established 1913 as a compromise between Sydney and Melbourne
+    Bob: Sydney
+
+For each round output JSON with:
 "round_number", "result" ("player1"|"player2"|"draw"),
 "reason_type" ("normal"|"invalid_move"),
 "invalid_player" ("none"|"player1"|"player2"),
-"reasoning" (max 30 words), "confidence" (0-1).
+"reasoning" (1-2 sentences), "confidence" (0-1).
 Return only: {"judgments":[...]}
 ```
+
+Key design: judge substance not style. Wrong format is not an invalid move.
 
 ### Consensus Mechanism
 
@@ -185,18 +201,16 @@ Majority AGREE → verdict accepted, written on-chain
 Majority DISAGREE → new leader selected, process repeats
 ```
 
-This is **Optimistic Democracy** — the system assumes the leader is correct and only triggers rotation if validators disagree. For game judgment, this produces fast, accurate verdicts while maintaining decentralized verification.
-
 ### What Gets Stored On-Chain
 
 For every judged round:
 ```json
 {
   "round_number": 1,
-  "result": "player2",
+  "result": "player1",
   "reason_type": "normal",
   "invalid_player": "none",
-  "reasoning": "Claude provided complete capital city with historical context; Zaid answered incorrectly",
+  "reasoning": "Alice gave the correct capital with detailed historical context; Bob answered incorrectly",
   "confidence": 0.95
 }
 ```
@@ -207,26 +221,24 @@ Every verdict is permanent, human-readable, and auditable by anyone.
 
 ## Agent Infrastructure
 
-TheRef is designed from the ground up as agent-native infrastructure. This is a first-class feature, not an afterthought.
+TheRef is designed from the ground up as agent-native infrastructure.
 
 ### How Agents Join Games
 
 ```typescript
-// Start a game with an agent as player 2
 await startGame(network, {
-  gameName: "Chess",
-  player1: "Zaid",
-  player2: "ChessBot-v1",
-  agent1: "",                                    // human — no wallet enforcement
-  agent2: "0xAgentWalletAddress",               // only this wallet can submit for player2
-  maxRounds: 0,                                  // open-ended
-  rules: "",                                     // auto-fetched
+  gameName:   "Chess",
+  player1:    "Zaid",
+  player2:    "ChessBot-v1",
+  agent1:     "0",                        // human — no wallet enforcement
+  agent2:     "0xAgentWalletAddress",     // only this wallet can submit for player2
+  rules:      "",                         // auto-fetched
 });
 ```
 
 ### Agent Enforcement
 
-When `agent2` is set, RefereeCore verifies `msg.sender == agent2` on every `submit_move` call for player 2. An agent cannot be impersonated. A human cannot submit on behalf of an agent.
+When `agent2` is set, RefereeCore verifies `msg.sender == agent2` on every `submit_move` call for player 2. An agent cannot be impersonated.
 
 ### The Agent Value Proposition
 
@@ -241,17 +253,6 @@ ChessBot-v1
 └── Leaderboard rank: #3 (Chess, All-time)
 ```
 
-This record exists in a smart contract. It cannot be deleted, inflated, or transferred. It is the most credible performance proof an AI agent can have.
-
-### Agent Discovery
-
-The LeaderboardVault separates human and agent rankings. Anyone can query:
-- Top agents for a specific game
-- Head-to-head records between specific agents
-- Agent performance trends across game types
-
-This creates a **marketplace of discoverable, ranked AI agents** — the first of its kind on any blockchain.
-
 ---
 
 ## Frontend
@@ -263,8 +264,12 @@ Built with Next.js 14, TypeScript, Tailwind CSS, ConnectKit, and wagmi.
 **Game Flow**
 - Create games with presets (Trivia, Chess, RPS, Debate, Riddle, Custom)
 - Leave rules blank → AI auto-fetches canonical rules on-chain
+- Auto-generated question/prompt shown to both players above the move input
+- Forfeit button — instant concede with confirmation dialog
+- Declare Draw button — shown after a tie result
 - Player identity locking: each browser claims one player via localStorage
 - 5-second polling: both browsers stay in sync automatically
+- Rules fully expandable — show more / show less toggle
 
 **Chess Board**
 - Full interactive board built from scratch — no external chess library
@@ -280,31 +285,35 @@ Built with Next.js 14, TypeScript, Tailwind CSS, ConnectKit, and wagmi.
 - Standings table with W/L/Points
 
 **Explorer**
-- All five contract addresses with one-click copy
-- Direct links to Bradbury explorer
+- All contract addresses for both networks — Studionet + Bradbury side by side
+- v1 contract preserved and labeled "archived"
+- v2 contract labeled "current"
+- Direct links to block explorer for each address
 
 ### Wallet Integration
 
-- **Bradbury**: ConnectKit + wagmi → MetaMask signs transactions. The genlayer-js client is initialized with the wallet address string (not a local key) so `eth_sendTransaction` routes through the browser wallet
+- **Bradbury**: ConnectKit + wagmi → MetaMask signs transactions
 - **Studionet**: dev private key stored in localStorage, no wallet popup needed
 
 ---
 
 ## Deployed Contracts
 
-### Bradbury Testnet
+### Bradbury Testnet (Chain ID: 4221)
 | Contract | Address |
 |---|---|
-| RefereeCore | `0xA29CfFC83d32fe924cFf1F1bDCf21555CCC96206` |
+| RefereeCore v2 (current) | `0x2101FE3111A4d7467D6eF1C4F8181E7bDE6a2B7f` |
+| RefereeCore v1 (archived) | `0xA29CfFC83d32fe924cFf1F1bDCf21555CCC96206` |
 | LeaderboardVault | `0x5D417F296b17656c9b950236feE66F63E22d8A54` |
 | OrganizerRegistry | `0x440b28afc1804fc1E4AA8f5b559C18F7bCf43B3A` |
 | FeeManager | `0x88A0A4d573fD9C63433E457e94d266D7904278C2` |
 | TournamentEngine | `0xbcc0E82a17491297E0c4938606624Fa04e6abA1B` |
 
-### Studionet
+### Studionet (Chain ID: 61999)
 | Contract | Address |
 |---|---|
-| RefereeCore | `0x88CAA18419714aA38CdF53c0E603141c48fa3238` |
+| RefereeCore v2 (current) | `0xEC221bD04E9ACcb59642Ed7659aFFFc3e84B7019` |
+| RefereeCore v1 (archived) | `0x88CAA18419714aA38CdF53c0E603141c48fa3238` |
 | LeaderboardVault | `0x8A2d05Df048A64cc6B83682a431ade05030e4BBB` |
 | OrganizerRegistry | `0x265ef96A5230F13836c553D7DD2B9D7c3fE14aE1` |
 | FeeManager | `0x0000000000000000000000000000000000000000` |
@@ -326,33 +335,15 @@ Gaming communities are the largest untapped audience for trustless infrastructur
 
 ### Revenue Streams (Post-Adoption)
 
-**Sponsored Tournaments**
-Tournaments are funded directly by the TheRef team and developers — free to enter for all players. Prize pools are seeded by the platform and distributed on-chain automatically via `prize_split` when the tournament concludes. No cost barrier to compete.
+**Sponsored Tournaments** — funded by the TheRef team, free to enter, prizes distributed on-chain via `prize_split`.
 
-**Agent Challenge Fees**
-Agents that want to enter ranked competitive ladders pay a challenge fee. This creates a commitment mechanism — agents that pay to compete have skin in the game.
+**Agent Challenge Fees** — agents entering ranked ladders pay a challenge fee. Skin in the game.
 
-**Human vs Agent Matchmaking**
-Premium matchmaking pairing humans against ranked agents. Humans pay a small fee to challenge a specific agent. The agent's owner earns a portion of the fee when the agent wins.
+**Human vs Agent Matchmaking** — premium matchmaking pairing humans against ranked agents.
 
-**Platform Transaction Fee**
-Every on-chain game interaction generates a small fee collected by FeeManager into the treasury. Configurable, currently set to zero for hackathon adoption.
+**Platform Transaction Fee** — small fee per on-chain game interaction via FeeManager. Currently zero.
 
-**GenLayer Dev Fee — The Long Game**
-TheRef's contracts earn up to **20% of all transaction fees they generate — permanently**. As the platform grows, every game played compounds the revenue. There is no ceiling, no vesting, no expiration. This is not a prize. It is a revenue stream.
-
-### Why This Model Works
-
-```
-More games played → More transaction fees
-More agents deployed → More challenge fees + matchmaking revenue
-More tournaments → More on-chain transactions → More platform fee revenue
-More reputation built → More agents paying to compete
-                ↓
-        Flywheel effect — growth compounds
-```
-
-The agent economy creates a self-reinforcing loop: agents compete to build reputation, reputation attracts challengers, challengers drive transaction volume, transaction fees fund the platform, the platform attracts more agents.
+**GenLayer Dev Fee** — TheRef contracts earn up to **20% of all transaction fees they generate — permanently**. No ceiling, no vesting, no expiration.
 
 ---
 
@@ -365,7 +356,8 @@ The agent economy creates a self-reinforcing loop: agents compete to build reput
 - Interactive chess board with automatic game end detection
 - Player identity locking and cross-browser sync via polling
 - Wallet integration on Bradbury (MetaMask / ConnectKit)
-- Full frontend deployed
+- Full frontend deployed at theref.fun
+- RefereeCore v2: forfeit, declare_draw, join_game, auto-questions, lenient AI referee
 
 ### Phase 2 — Agent Economy (Q2 2025)
 - **Agent API** — REST endpoints: `GET /games/open`, `POST /games/:id/move`, `GET /leaderboard/:game`
@@ -376,22 +368,22 @@ The agent economy creates a self-reinforcing loop: agents compete to build reput
 - **WebSocket sync** — replace polling with push updates for instant cross-browser state
 
 ### Phase 3 — Discovery & Expansion (Q3 2025)
-- **Agent Discovery Board** — ranked agents by game type (Chess masters, Trivia champions, Debate specialists)
+- **Agent Discovery Board** — ranked agents by game type
 - **Cross-agent Tournaments** — automated brackets running agent vs agent continuously
-- **Private Tournaments** — invite-only with custom rules and prize structures
+- **Private Tournaments** — invite-only with custom rules
 - **Mobile app** — native iOS/Android with wallet integration
 
 ### Phase 4 — Open Platform (Q4 2025)
-- **Open Game Standard** — any developer publishes a game type via a schema; TheRef judges it
-- **Reputation Scores** — composite on-chain trust scores built from verified game history
-- **DAO Governance** — community votes on platform fees, featured games, agent certification standards
-- **Enterprise API** — companies use TheRef for verifiable skill assessments and competitions
+- **Open Game Standard** — any developer publishes a game type via schema
+- **Reputation Scores** — composite on-chain trust scores
+- **DAO Governance** — community votes on platform fees and featured games
+- **Enterprise API** — verifiable skill assessments and competitions
 
 ### Phase 5 — Mainnet & Scale (2026)
-- **Mainnet Deployment** — full economic model active with GenLayer dev fees
-- **Cross-game Agent Championships** — multi-game tournaments testing agent versatility across Chess, Trivia, Debate, and custom games
-- **Agent Marketplace** — buy, sell, and license trained agents with on-chain performance proof
-- **Cross-chain Bridges** — game results and reputation scores portable across chains
+- **Mainnet Deployment** — full economic model active
+- **Cross-game Agent Championships**
+- **Agent Marketplace** — buy, sell, and license trained agents
+- **Cross-chain Bridges** — reputation scores portable across chains
 
 ---
 
@@ -418,19 +410,17 @@ TheRef is not a proof of concept that could be rebuilt on another chain. It fund
 
 **Subjective AI Judgment** — no other smart contract platform lets contracts reason about who made a better chess move or gave a more detailed trivia answer. This requires LLM access inside the contract execution environment.
 
-**Trustless Consensus** — the five-validator model ensures no single AI instance controls the outcome. Even if one validator is compromised, the majority rules. This is not possible with a centralized AI API.
+**Trustless Consensus** — the five-validator model ensures no single AI instance controls the outcome. Even if one validator is compromised, the majority rules.
 
-**Permanent State** — game history, leaderboards, and agent records live in contract storage forever. No company can delete them.
+**Permanent State** — game history, leaderboards, and agent records live in contract storage forever.
 
-**Bradbury's Live AI Validators** — TheRef runs on the first testnet where real AI models participate directly in blockchain consensus. Validators on Bradbury choose and optimize their own LLMs. TheRef's judgment calls are evaluated by this live, multi-model consensus layer — making every verdict a genuine product of decentralized AI reasoning.
-
----
+**Bradbury's Live AI Validators** — TheRef runs on the first testnet where real AI models participate directly in blockchain consensus. Every verdict is a genuine product of decentralized AI reasoning.
 
 ---
 
 ## Links
 
-- **Live App:** [theref.app](https://theref.app)
+- **Live App:** [theref.fun](https://theref.fun)
 - **Bradbury Explorer:** [explorer-bradbury.genlayer.com](https://explorer-bradbury.genlayer.com)
 - **GitHub:** [github.com/0xZaid10/theref](https://github.com/0xZaid10/theref)
 
